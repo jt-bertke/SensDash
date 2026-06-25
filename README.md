@@ -1,5 +1,12 @@
 # SensDash
-This program details a simulated car dashboard using C++ as a backend to generate random data for the dashboard, and python as a the frontend using "dash" as the virtual environment.
-To setup this program pull the git repository into your IDE. Then inside of the dashboard frontend run this code in your terminal:
-          source .venv/bin/activate.
-This will setup the virtual environment needed to run the code.
+In its current state, this program uses python to simulate a cars dashboard. The data is generated randomly in the backend while the frontend uses PySide6 to generate the GUI. Eventually the GUI will pull realtime data from an arduino, and the project will evolve from there.
+
+Start Up Requirements:
+- Ensure that your IDE or Computer has the correct python installed (I'm currently using Python 3.14.0)
+- Nextly create a virtual environment within the "Dashboard Frontend" folder using this command:
+                   python -m venv venv (Windows)
+- Then start the virtual environment using this windows command:
+                   .\venv\Scripts\Activate.ps1
+- Then simply run the main.py program in the terminal using:
+                   python main.py
+
