@@ -1,5 +1,11 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QVBoxLayout
+from PySide6.QtWidgets import (
+    QApplication, 
+    QMainWindow, 
+    QWidget, 
+    QLabel, 
+    QVBoxLayout
+)
 
 #Setting up Main Window child class pulling from QMainWindow
 class MainWindow(QMainWindow):
