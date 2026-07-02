@@ -1,23 +1,46 @@
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
-    QVBoxLayout,
+    QGridLayout,
     QFrame
 )
+
+from pages.utilities.cards import sensorCard
 
 class dashboardPage(QWidget):
 
     def __init__(self):
         super().__init__()
         
-        gauge_layout = QVBoxLayout(self)
+        layout = QGridLayout()
 
-        rpm_gauge = QFrame()
-        rpm_gauge.setFrameShape(QFrame.SyledPanel)
+        rpm_card = sensorCard(
+            title="Motor Speed",
+            value=2500,
+            units="RPM"
+        )
 
-        card_layout = QVBoxLayout(rpm_gauge)
+        temp_card = sensorCard(
+            title="Temperature",
+            value=68,
+            units="F"
+        )
 
-        rpm_label = QLabel("RPM")
-        card_layout.addWidget(rpm_label)
+        voltage_card = sensorCard(
+            title="Voltage",
+            value=12.6,
+            units="V"
+        )
 
-        gauge_layout.addWidget(rpm_gauge)
+        current_card = sensorCard(
+            title="Current",
+            value=3.42,
+            units="A"
+        )
+
+        layout.addWidget(rpm_card, 0, 0)
+        layout.addWidget(temp_card, 0, 1)
+        layout.addWidget(voltage_card, 1, 0)
+        layout.addWidget(current_card, 1, 1)
+
+        self.setLayout(layout)
