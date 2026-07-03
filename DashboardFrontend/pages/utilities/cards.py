@@ -4,14 +4,17 @@ from PySide6.QtWidgets import (
     QFrame,
     QVBoxLayout,
     QHBoxLayout,
+    QPushButton,
 )
 
 from PySide6.QtGui import(
     QPixmap
 )
-
+from PySide6.QtCore import (
+    Qt,
+    Signal,
+)
 import qtawesome as qta
-
 
 class sensorCard(QWidget):
 
@@ -33,12 +36,14 @@ class sensorCard(QWidget):
             color: #A6B2C2;
             font-size:14px;                           
         """)
+        
         self.value_label = QLabel(str(value))
         self.value_label.setStyleSheet("""
             color:white;
             font-size:38px;
             font-weight:bold;                      
         """)
+        
         self.units_label = QLabel(units)
         self.units_label.setStyleSheet("""
             color:#3B82F6;
@@ -67,28 +72,28 @@ class TopBanner(QFrame):
 
         #Main layout for the banner
         layout = QHBoxLayout()
-        layout.setContentsMargins(20,8,20,12)
+        self.setFixedHeight(45)
 
         #Setting up banner logo using pixmap
         self.logo = QLabel()
         logo_icon = qta.icon("ph.gauge-bold", color="#FFFFFF")
-        logo_pixmap = logo_icon.pixmap(32, 32)
+        logo_pixmap = logo_icon.pixmap(20, 20)
         self.logo.setPixmap(logo_pixmap)
 
         #Setting up title and wifi connection (need to add functionality to this later)
         self.title = QLabel("Sensor Dashboard")
-        self.status = QLabel("● Connected")
+        self.status = QLabel("● CONNECTED")
 
         #Setting up usb connection logo (need to add functionality to this later)
         self.connection = QLabel()
         usb_icon = qta.icon("mdi.usb", color="#FFFFFF")
-        usb_pixmap = usb_icon.pixmap(25, 25)
+        usb_pixmap = usb_icon.pixmap(20, 20)
         self.connection.setPixmap(usb_pixmap)
 
         #Setting up network logo
         self.network = QLabel()
         wifi_icon = qta.icon("ph.wifi-high-light", color="#FFFFFF")
-        wifi_pixmap = wifi_icon.pixmap(25, 25)
+        wifi_pixmap = wifi_icon.pixmap(20, 20)
         self.network.setPixmap(wifi_pixmap)
 
         #Setting up clock (Need to add functionality to this later)
@@ -100,11 +105,11 @@ class TopBanner(QFrame):
         layout.addStretch()
         layout.addStretch()
         layout.addWidget(self.status)
-        layout.addSpacing(10)
+        layout.addSpacing(15)
         layout.addWidget(self.connection)
-        layout.addSpacing(10)
+        layout.addSpacing(15)
         layout.addWidget(self.network)
-        layout.addSpacing(10)
+        layout.addSpacing(15)
         layout.addWidget(self.clock)
 
         self.setLayout(layout)
@@ -118,21 +123,127 @@ class TopBanner(QFrame):
         """)
 
         self.title.setStyleSheet("""
-            font-size: 20px;
+            font-size: 15px;
             color: #FFFFFF;
         """)
 
         self.status.setStyleSheet("""
-            color: #FFFFFF;
-            font-size: 15px;
-            font-weight: bold;
+            color: #009D22;
+            font-size: 12px;
         """)
 
         self.clock.setStyleSheet("""
+            font-size: 12px;
             color: #FFFFFF;
-            font-weight: bold;
         """)
 
-        self.setFixedHeight(60)
+class SideBanner(QFrame):
 
+    dashboard_clicked = Signal()
+    logs_clicked = Signal()
+    settings_clicked = Signal()
 
+    #HTML for the Button
+    NORMAL_BUTTON_STYLE = """
+        QPushButton {
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: #FFFFFF;
+            text-align: left;
+            padding-left: 15px;
+            font-size: 14px;
+        }
+
+        QPushButton:hover {
+            background-color: #1A222C;
+        }
+    """
+
+    #HTML for the actively selected button
+    ACTIVE_BUTTON_STYLE = """
+        QPushButton {
+            background-color: rgba(59,130,245,0.5);
+            color: white;
+            border-left: 2px solid #3B82F6;
+            border-radius: 5px;
+            color: #FFFFFF;
+            text-align: left;
+            padding-left: 15px;
+            font-size: 14px;
+        }
+    """
+    
+    def __init__(self):
+        super().__init__()
+
+        # Setting up button
+        self.dashboard_button = QPushButton("Dashboard")
+        self.logs_button = QPushButton("Logs")
+        self.settings_button = QPushButton("Settings")
+        
+        # Setting up array of buttons to reduce code amount
+        self.buttons = [
+            self.dashboard_button,
+            self.logs_button,
+            self.settings_button,
+        ]
+        
+        #Setting up button sizes and styles
+        for button in self.buttons:
+            button.setFixedSize(140, 42)
+            button.setStyleSheet(self.NORMAL_BUTTON_STYLE)
+
+        # Button Connections
+        self.dashboard_button.clicked.connect(
+            self.dashboard_clicked.emit
+        )
+
+        self.logs_button.clicked.connect(
+            self.logs_clicked.emit
+        )
+
+        self.settings_button.clicked.connect(
+            self.settings_clicked.emit
+        )
+
+        # Sidebar layout and spacing
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setAlignment(Qt.AlignTop)
+        sidebar_layout.setSpacing(10)
+        sidebar_layout.addSpacing(20)
+
+        sidebar_layout.addWidget(
+            self.dashboard_button,
+            alignment=Qt.AlignHCenter
+        )
+
+        sidebar_layout.addWidget(
+            self.logs_button,
+            alignment=Qt.AlignHCenter
+        )
+
+        sidebar_layout.addWidget(
+            self.settings_button,
+            alignment=Qt.AlignHCenter
+        )
+
+        sidebar_layout.addStretch()
+
+        self.setLayout(sidebar_layout)
+        self.setFixedWidth(170)
+
+        #Side bar styling HTML
+        self.setObjectName("SideBanner")
+        self.setStyleSheet("""
+            #SideBanner {
+                background-color: #11161D;
+                border-right: 2px solid #141a1f;
+            }
+        """)
+    def set_active_button(self, active_button):
+
+        for button in self.buttons:
+            button.setStyleSheet(self.NORMAL_BUTTON_STYLE)
+        
+        active_button.setStyleSheet(self.ACTIVE_BUTTON_STYLE)
