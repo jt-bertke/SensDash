@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from pages.dashboard import dashboardPage
 from pages.settings import settingsPage
 from pages.logs import logsPage
+from pages.utilities.cards import TopBanner
 
 
 class mainWindow(QMainWindow):
@@ -21,31 +22,29 @@ class mainWindow(QMainWindow):
             background: transparent;
             border: none;
             border-radius: 8px;
+            color: #FFFFFF;
             text-align: left;
             padding-left: 15px;
             font-size: 14px;
         }
 
         QPushButton:hover {
-            background-color: #E8E8E8;
+            background-color: #1A222C;
         }
     """
 
     #HTML for the actively selected button
     ACTIVE_BUTTON_STYLE = """
         QPushButton {
-            background-color: #0078D7;
+            background-color: rgba(59,130,245,0.5);
             color: white;
-            border: none;
+            border-left: 2px solid #3B82F6;
             border-radius: 8px;
+            color: #FFFFFF;
             text-align: left;
             padding-left: 15px;
             font-size: 14px;
             font-weight: bold;
-        }
-
-        QPushButton:hover {
-            background-color: #0078D7;
         }
     """
 
@@ -136,21 +135,36 @@ class mainWindow(QMainWindow):
         #Side bar styling HTML
         sidebar.setStyleSheet("""
             QWidget {
-                background-color: #F7F7F7;
-                border-right: 1px solid #D0D0D0;
+                background-color: #11161D;
+                border-right: 1px solid #141a1f;
             }
         """)
 
         # Main Layout
-        main_layout = QHBoxLayout()
+        bulk_layout = QHBoxLayout()
 
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        bulk_layout.setContentsMargins(0, 0, 0, 0)
+        bulk_layout.setSpacing(0)
+
+        bulk_layout.addWidget(sidebar)
+        bulk_layout.addWidget(self.pages)
+
+        bulk_container = QWidget()
+        bulk_container.setLayout(bulk_layout)
+
+        #Setting up top banner
+        Banner = TopBanner()
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0,0,0,0)
         main_layout.setSpacing(0)
-
-        main_layout.addWidget(sidebar)
-        main_layout.addWidget(self.pages)
+        main_layout.addWidget(Banner)
+        main_layout.addWidget(bulk_container)
 
         container = QWidget()
+        container.setStyleSheet("""
+            background-color: #11161D
+        """)
         container.setLayout(main_layout)
 
         self.setCentralWidget(container)

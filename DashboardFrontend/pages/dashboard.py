@@ -14,6 +14,9 @@ class dashboardPage(QWidget):
         
         layout = QGridLayout()
 
+        layout.setContentsMargins(20,20,20,20)
+        layout.setSpacing(20)
+
         rpm_card = sensorCard(
             title="Motor Speed",
             value=2500,
