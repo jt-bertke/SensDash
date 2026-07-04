@@ -140,8 +140,10 @@ class TopBanner(QFrame):
 class SideBanner(QFrame):
 
     dashboard_clicked = Signal()
+    livedata_clicked = Signal()
     logs_clicked = Signal()
     settings_clicked = Signal()
+    about_clicked = Signal()
 
     #HTML for the Button
     NORMAL_BUTTON_STYLE = """
@@ -151,7 +153,7 @@ class SideBanner(QFrame):
             border-radius: 8px;
             color: #FFFFFF;
             text-align: left;
-            padding-left: 15px;
+            padding-left: 8px;
             font-size: 14px;
         }
 
@@ -169,34 +171,70 @@ class SideBanner(QFrame):
             border-radius: 5px;
             color: #FFFFFF;
             text-align: left;
-            padding-left: 15px;
+            padding-left: 8px;
             font-size: 14px;
         }
     """
     
+    def create_icon(self, icon_name, color="#FFFFFF"):
+        return qta.icon(icon_name, color=color)
+
     def __init__(self):
         super().__init__()
 
+        self.setObjectName("SideBanner")
+        self.setFixedWidth(170)
+        self.setStyleSheet("""
+            #SideBanner {
+                background-color: #11161D;
+                border-right: 2px solid #141a1f;
+            }
+        """)
+
         # Setting up button
         self.dashboard_button = QPushButton("Dashboard")
-        self.logs_button = QPushButton("Logs")
+        self.livedata_button = QPushButton("Live Data")
+        self.logs_button = QPushButton("Data Logger")
         self.settings_button = QPushButton("Settings")
+        self.about_button = QPushButton("About")
         
         # Setting up array of buttons to reduce code amount
         self.buttons = [
             self.dashboard_button,
+            self.livedata_button,
             self.logs_button,
             self.settings_button,
+            self.about_button
         ]
-        
+
+        self.dashboard_button.setIcon(
+            self.create_icon("fa5s.home")
+        )
+        self.livedata_button.setIcon(
+            self.create_icon("ph.database")
+        )
+        self.logs_button.setIcon(
+            self.create_icon("ri.file-paper-2-fill")
+        )
+        self.settings_button.setIcon(
+            self.create_icon("ri.settings-2-line")
+        )
+        self.about_button.setIcon(
+            self.create_icon("mdi.information-outline")
+        )
+
         #Setting up button sizes and styles
         for button in self.buttons:
-            button.setFixedSize(140, 42)
+            button.setFixedSize(150, 42)
             button.setStyleSheet(self.NORMAL_BUTTON_STYLE)
 
         # Button Connections
         self.dashboard_button.clicked.connect(
             self.dashboard_clicked.emit
+        )
+
+        self.livedata_button.clicked.connect(
+            self.livedata_clicked.emit
         )
 
         self.logs_button.clicked.connect(
@@ -207,7 +245,10 @@ class SideBanner(QFrame):
             self.settings_clicked.emit
         )
 
-        # Sidebar layout and spacing
+        self.about_button.clicked.connect(
+            self.about_clicked.emit
+        )
+
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setAlignment(Qt.AlignTop)
         sidebar_layout.setSpacing(10)
@@ -219,6 +260,11 @@ class SideBanner(QFrame):
         )
 
         sidebar_layout.addWidget(
+            self.livedata_button,
+            alignment=Qt.AlignHCenter
+        )
+
+        sidebar_layout.addWidget(
             self.logs_button,
             alignment=Qt.AlignHCenter
         )
@@ -228,19 +274,15 @@ class SideBanner(QFrame):
             alignment=Qt.AlignHCenter
         )
 
+        sidebar_layout.addWidget(
+            self.about_button,
+            alignment=Qt.AlignHCenter
+        )
+
         sidebar_layout.addStretch()
 
         self.setLayout(sidebar_layout)
-        self.setFixedWidth(170)
-
-        #Side bar styling HTML
-        self.setObjectName("SideBanner")
-        self.setStyleSheet("""
-            #SideBanner {
-                background-color: #11161D;
-                border-right: 2px solid #141a1f;
-            }
-        """)
+        
     def set_active_button(self, active_button):
 
         for button in self.buttons:

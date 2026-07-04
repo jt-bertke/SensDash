@@ -2,7 +2,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
-    QPushButton,
     QHBoxLayout,
     QVBoxLayout,
     QStackedWidget,
@@ -11,6 +10,8 @@ from PySide6.QtWidgets import (
 from pages.dashboard import dashboardPage
 from pages.settings import settingsPage
 from pages.logs import logsPage
+from pages.livedata import liveDataPage
+from pages.about import aboutPage
 from pages.utilities.cards import (
     TopBanner,
     SideBanner,
@@ -28,26 +29,38 @@ class mainWindow(QMainWindow):
 
         # Setting up pages and formatting their layout
         self.dashboard_page = dashboardPage()
+        self.liveDataPage = liveDataPage()
         self.logs_page = logsPage()
         self.settings_page = settingsPage()
+        self.aboutPage = aboutPage()
         
         self.pages = QStackedWidget()
         
         self.pages.addWidget(self.dashboard_page)
+        self.pages.addWidget(self.liveDataPage)
         self.pages.addWidget(self.logs_page)
         self.pages.addWidget(self.settings_page)
+        self.pages.addWidget(self.aboutPage)
 
         self.Side_Banner = SideBanner()
+        
         self.show_dashboard
         self.Side_Banner.set_active_button(self.Side_Banner.dashboard_button)
+
         self.Side_Banner.dashboard_clicked.connect(
             self.show_dashboard
+        )
+        self.Side_Banner.livedata_clicked.connect(
+            self.show_livedata
         )
         self.Side_Banner.logs_clicked.connect(
             self.show_logs
         )
         self.Side_Banner.settings_clicked.connect(
             self.show_settings
+        )
+        self.Side_Banner.about_clicked.connect(
+            self.show_about
         )
 
         # Main Layout
@@ -86,6 +99,12 @@ class mainWindow(QMainWindow):
         self.Side_Banner.set_active_button(
             self.Side_Banner.dashboard_button
         )
+    def show_livedata(self):
+
+        self.pages.setCurrentWidget(self.liveDataPage)
+        self.Side_Banner.set_active_button(
+            self.Side_Banner.livedata_button
+        )
     def show_logs(self):
 
         self.pages.setCurrentWidget(self.logs_page)
@@ -97,4 +116,10 @@ class mainWindow(QMainWindow):
         self.pages.setCurrentWidget(self.settings_page)
         self.Side_Banner.set_active_button(
             self.Side_Banner.settings_button
+        )
+    def show_about(self):
+
+        self.pages.setCurrentWidget(self.aboutPage)
+        self.Side_Banner.set_active_button(
+            self.Side_Banner.about_button
         )
