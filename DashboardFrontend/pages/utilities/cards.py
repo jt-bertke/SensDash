@@ -16,6 +16,62 @@ from PySide6.QtCore import (
 )
 import qtawesome as qta
 
+class StatusCard(QFrame):
+
+    def __init__(self, title, status):
+        super().__init__()
+
+        self.setObjectName("StatusCard")
+
+        self.icon = QLabel()
+
+        icon = qta.icon(
+            "fa5s.circle",
+            color="#3CCF4E"
+        )
+
+        self.icon.setPixmap(icon.pixmap(12,12))
+
+        self.title = QLabel(title)
+
+        self.status = QLabel(status)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(2)
+        text_layout.setContentsMargins(0,0,0,0)
+
+        text_layout.addWidget(self.title)
+        text_layout.addWidget(self.status)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(12,12,12,12)
+        layout.setSpacing(10)
+
+        layout.addWidget(self.icon)
+        layout.addLayout(text_layout)
+
+        self.setLayout(layout)
+
+        self.setStyleSheet("""
+        #StatusCard{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }
+        QLabel{
+            border:none;
+        }
+        """)
+        self.title.setStyleSheet("""
+            color:#9CA3AF;
+            font-size:8px;
+        """)
+        self.status.setStyleSheet("""
+            color:#3CCF4E;
+            font-size:10px;
+            font-weight:bold;
+        """)
+
 class sensorCard(QWidget):
 
     def __init__(self, title, value, units):
@@ -178,9 +234,22 @@ class SideBanner(QFrame):
     
     def create_icon(self, icon_name, color="#FFFFFF"):
         return qta.icon(icon_name, color=color)
+    
+    def create_icon_label(self, icon_name, size=20, color="#FFFFFF"):
+        label = QLabel()
+        icon = qta.icon(icon_name, color=color)
+        label.setPixmap(icon.pixmap(size, size))
+
+        return label
 
     def __init__(self):
         super().__init__()
+
+        
+        self.system_card = StatusCard(
+            "System Status",
+            "All Systems Normal"
+        )
 
         self.setObjectName("SideBanner")
         self.setFixedWidth(170)
@@ -252,8 +321,8 @@ class SideBanner(QFrame):
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setAlignment(Qt.AlignTop)
         sidebar_layout.setSpacing(10)
-        sidebar_layout.addSpacing(20)
-
+        sidebar_layout.addSpacing(20)      
+        
         sidebar_layout.addWidget(
             self.dashboard_button,
             alignment=Qt.AlignHCenter
@@ -280,6 +349,16 @@ class SideBanner(QFrame):
         )
 
         sidebar_layout.addStretch()
+
+        sidebar_layout.addWidget(self.system_card)
+
+        self.version = QLabel("v1.0.0")
+        self.version.setStyleSheet("""
+            color:#6B7280;
+            font-size: 11px;
+            border:none;
+        """)
+        sidebar_layout.addWidget(self.version)
 
         self.setLayout(sidebar_layout)
         
