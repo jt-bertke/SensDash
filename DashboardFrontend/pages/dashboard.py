@@ -1,21 +1,34 @@
 from PySide6.QtWidgets import (
     QWidget,
-    QLabel,
     QGridLayout,
-    QFrame
+    QHBoxLayout,
+    QSizePolicy,
+    QVBoxLayout
 )
 
-from pages.utilities.cards import sensorCard
+
+from pages.utilities.cards import (
+    sensorCard,
+    EcuCard,
+    DriveTrainCard,
+    SensorTrends,
+    SystemLog,
+    BottomLog
+)
 
 class dashboardPage(QWidget):
 
     def __init__(self):
         super().__init__()
         
-        layout = QGridLayout()
+        data_cluster = QGridLayout()
 
-        layout.setContentsMargins(20,20,20,20)
-        layout.setSpacing(20)
+        data_cluster.setContentsMargins(0,0,0,0)
+        data_cluster.setSpacing(3)
+        for row in range(3):
+            data_cluster.setRowStretch(row, 1)
+        for col in range(2):
+            data_cluster.setColumnStretch(col, 1)
 
         rpm_card = sensorCard(
             title="Motor Speed",
@@ -41,9 +54,56 @@ class dashboardPage(QWidget):
             units="A"
         )
 
-        layout.addWidget(rpm_card, 0, 0)
-        layout.addWidget(temp_card, 0, 1)
-        layout.addWidget(voltage_card, 1, 0)
-        layout.addWidget(current_card, 1, 1)
+        blank_card1 = sensorCard(
+            title="N/A",
+            value = 0.00,
+            units="N/A"
+        )
 
-        self.setLayout(layout)
+        blank_card2 = sensorCard(
+            title="N/A",
+            value = 0.00,
+            units="N/A"
+        )
+
+        data_cluster.addWidget(rpm_card, 0, 0)
+        data_cluster.addWidget(temp_card, 0, 1)
+        data_cluster.addWidget(voltage_card, 1, 0)
+        data_cluster.addWidget(current_card, 1, 1)
+        data_cluster.addWidget(blank_card1, 2,0)
+        data_cluster.addWidget(blank_card2, 2,1)
+
+
+        data_cluster_widget = QWidget()
+        data_cluster_widget.setLayout(data_cluster)
+        data_cluster_widget.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
+        Ecu_card = EcuCard()
+        Drive_Train = DriveTrainCard()
+        Sensor_Trends = SensorTrends()
+        System_Log = SystemLog()
+        Bottom_Log = BottomLog()
+
+        dash_layout = QGridLayout()
+
+        dash_layout.setSpacing(12)
+
+        dash_layout.setColumnStretch(0, 1)
+        dash_layout.setColumnStretch(1, 1)
+        dash_layout.setColumnStretch(2, 1)
+
+        dash_layout.setRowStretch(0, 5)
+        dash_layout.setRowStretch(1, 3)
+        dash_layout.setRowStretch(2, 1)
+
+        dash_layout.addWidget(Ecu_card, 0, 0, 1, 1)
+        dash_layout.addWidget(Drive_Train, 0, 1, 1, 1)
+        dash_layout.addWidget(data_cluster_widget, 0, 2, 1, 1)
+        dash_layout.addWidget(Sensor_Trends, 1, 0, 1, 2)
+        dash_layout.addWidget(System_Log, 1, 2, 1, 1)
+        dash_layout.addWidget(Bottom_Log, 2, 0, 1, 3)
+        
+        self.setLayout(dash_layout)

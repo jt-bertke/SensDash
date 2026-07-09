@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
+    QSizePolicy
 )
 
 from PySide6.QtGui import(
@@ -15,6 +16,98 @@ from PySide6.QtCore import (
     Signal,
 )
 import qtawesome as qta
+
+class EcuCard(QFrame):
+    
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("EcuFrame")
+        self.setStyleSheet("""
+        #EcuFrame{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }
+        """)
+
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
+class DriveTrainCard(QFrame):
+
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("DriveTrainFrame")
+        self.setStyleSheet("""
+        #DriveTrainFrame{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }                
+        """)
+
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
+class SensorTrends(QFrame):
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("DriveTrainFrame")
+        self.setStyleSheet("""
+        #DriveTrainFrame{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }                
+        """)
+
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
+class SystemLog(QFrame):
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("DriveTrainFrame")
+        self.setStyleSheet("""
+        #DriveTrainFrame{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }                
+        """)
+
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
+class BottomLog(QFrame):
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("DriveTrainFrame")
+        self.setStyleSheet("""
+        #DriveTrainFrame{
+            background-color:#11161D;
+            border:1px solid #273341;
+            border-radius:10px;
+        }                
+        """)
+
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
 
 class StatusCard(QFrame):
 
@@ -72,7 +165,7 @@ class StatusCard(QFrame):
             font-weight:bold;
         """)
 
-class sensorCard(QWidget):
+class sensorCard(QFrame):
 
     def __init__(self, title, value, units):
         super().__init__()
@@ -86,6 +179,8 @@ class sensorCard(QWidget):
                 border-radius: 12px;
             }             
         """)
+
+        
 
         self.title_label = QLabel(title)
         self.title_label.setStyleSheet("""
@@ -107,7 +202,14 @@ class sensorCard(QWidget):
             font-weight:bold;                               
         """)
 
+        self.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
         frame_layout = QVBoxLayout()
+        frame_layout.setContentsMargins(12,12,12,12)
+        frame_layout.setSpacing(6)
 
         frame_layout.addWidget(self.title_label)
         frame_layout.addWidget(self.value_label)
@@ -116,6 +218,8 @@ class sensorCard(QWidget):
         frame.setLayout(frame_layout)
 
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setSpacing(0)
 
         main_layout.addWidget(frame)
 
