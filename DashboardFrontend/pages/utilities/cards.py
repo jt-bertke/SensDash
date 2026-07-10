@@ -25,7 +25,7 @@ class EcuCard(QFrame):
         self.setObjectName("EcuFrame")
         self.setStyleSheet("""
         #EcuFrame{
-            background-color:#11161D;
+            background-color:#14191f;
             border:1px solid #273341;
             border-radius:10px;
         }
@@ -44,7 +44,7 @@ class DriveTrainCard(QFrame):
         self.setObjectName("DriveTrainFrame")
         self.setStyleSheet("""
         #DriveTrainFrame{
-            background-color:#11161D;
+            background-color:#14191f;
             border:1px solid #273341;
             border-radius:10px;
         }                
@@ -62,7 +62,7 @@ class SensorTrends(QFrame):
         self.setObjectName("DriveTrainFrame")
         self.setStyleSheet("""
         #DriveTrainFrame{
-            background-color:#11161D;
+            background-color:#14191f;
             border:1px solid #273341;
             border-radius:10px;
         }                
@@ -80,7 +80,7 @@ class SystemLog(QFrame):
         self.setObjectName("DriveTrainFrame")
         self.setStyleSheet("""
         #DriveTrainFrame{
-            background-color:#11161D;
+            background-color:#14191f;
             border:1px solid #273341;
             border-radius:10px;
         }                
@@ -92,6 +92,101 @@ class SystemLog(QFrame):
         )
 
 class BottomLog(QFrame):
+    
+    def create_icon(self, icon_title, color="#6B7280", size=25):
+        self.label = QLabel()
+
+        self.label.setContentsMargins(0,0,0,0)
+
+        icon = qta.icon(str(icon_title), color=color)
+        self.label.setPixmap(icon.pixmap(size, size))
+
+        return self.label
+    
+    def create_separator(self):
+        line = QFrame()
+        line.setFrameShape(QFrame.VLine)
+        line.setFixedWidth(1)
+        line.setStyleSheet("""
+            background-color: #273341;
+            border: none;
+        """)
+        return line
+    
+    def create_monitor_card(self, value, unit, label, icon):
+        #Overall Container of Card
+        self.monitor_card = QFrame()
+
+        self.monitor_card.setContentsMargins(0,0,0,0)
+        self.monitor_card.setObjectName("MonitorFrame")
+        
+        self.monitor_card.setStyleSheet("""
+        #MonitorFrame{
+            background-color:#11161D;
+            border-right: 1px solid #273341; 
+        }                   
+        """)
+        
+        #Top Text of the Monitor Card
+        monitor_card_top_text_layout = QHBoxLayout()
+        
+        self.value = QLabel(value)
+        self.unit = QLabel(unit)
+        
+        monitor_card_top_text_layout.addWidget(self.value, 1)
+        monitor_card_top_text_layout.addWidget(self.unit, 6)
+
+        monitor_card_top_text_layout.setSpacing(3)
+        monitor_card_top_text_layout.setContentsMargins(0,0,0,0)
+
+        self.value.setStyleSheet("""
+            font-size: 14px;
+            color: #6B7280;
+            font-weight: bold;
+        """)
+
+        self.unit.setStyleSheet("""
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: none;
+        """)
+        
+        self.monitor_card_top_text = QWidget()
+        self.monitor_card_top_text.setLayout(monitor_card_top_text_layout)
+
+        #Bottom text of card and overall text of card
+        monitor_card_text_layout = QVBoxLayout()
+        
+        monitor_card_text_layout.setSpacing(0)
+        monitor_card_text_layout.setContentsMargins(0,0,0,0)
+        
+        monitor_card_text_layout.addWidget(self.monitor_card_top_text)
+        
+        self.label = QLabel(label)
+        monitor_card_text_layout.addWidget(self.label)
+
+        self.label.setStyleSheet("""
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: none;
+        """)
+        
+        self.monitor_card_text = QWidget()
+        self.monitor_card_text.setLayout(monitor_card_text_layout)
+
+        #Overall Structure of Card
+        monitor_card_layout = QHBoxLayout()
+        
+        monitor_card_layout.setContentsMargins(0,0,0,0)
+        monitor_card_layout.setSpacing(6)
+        
+        monitor_card_layout.addWidget(icon, 1)
+        monitor_card_layout.addWidget(self.monitor_card_text, 6)
+
+        self.monitor_card.setLayout(monitor_card_layout)
+
+        return self.monitor_card
+   
     def __init__(self):
         super().__init__()
 
@@ -108,6 +203,39 @@ class BottomLog(QFrame):
             QSizePolicy.Expanding,
             QSizePolicy.Expanding
         )
+
+        bottom_log_layout = QHBoxLayout()
+
+        line = QFrame()
+        line.setFrameShape(QFrame.VLine)
+        line.setStyleSheet("""
+            color: #273341;
+        """)
+
+        self.battery_voltage_icon = self.create_icon("fa6s.battery-half")
+        self.ambient_temp_icon = self.create_icon("fa5s.thermometer-half")
+        self.vehicle_speed_icon = self.create_icon("mdi6.speedometer")
+        self.motor_torque_icon = self.create_icon("fa6s.rotate")
+        self.drive_state_icon = self.create_icon("mdi.alpha-p-box-outline")
+
+        self.battery_voltage = self.create_monitor_card("12.6", "V", "Battery Voltage", self.battery_voltage_icon)
+        self.ambient_temp = self.create_monitor_card("25.3", "°C", "Ambient Temperature", self.ambient_temp_icon)
+        self.vehicle_speed = self.create_monitor_card("0.0", "MPH", "Vehicle Speed", self.vehicle_speed_icon)
+        self.motor_torque = self.create_monitor_card("0.0", "ft-lbs", "Motor Torque", self.motor_torque_icon)
+        self.drive_state = self.create_monitor_card("Park", None, "Drive State", self.drive_state_icon)
+
+        bottom_log_layout.addWidget(self.create_separator(), 1)
+        bottom_log_layout.addWidget(self.battery_voltage, 1)
+        bottom_log_layout.addWidget(self.create_separator(), 1)
+        bottom_log_layout.addWidget(self.ambient_temp, 1)
+        bottom_log_layout.addWidget(self.create_separator(),1)
+        bottom_log_layout.addWidget(self.vehicle_speed, 1)
+        bottom_log_layout.addWidget(self.create_separator(),1)
+        bottom_log_layout.addWidget(self.motor_torque, 1)
+        bottom_log_layout.addWidget(self.create_separator(),1)
+        bottom_log_layout.addWidget(self.drive_state, 1)
+
+        self.setLayout(bottom_log_layout)
 
 class StatusCard(QFrame):
 
@@ -174,9 +302,12 @@ class sensorCard(QFrame):
         frame.setObjectName("SensorCard")
         frame.setStyleSheet("""
             #SensorCard {
-                background-color: #1A222C;
+                background-color: #14191f;
                 border: 1px solid #273341;
                 border-radius: 12px;
+            }
+            QLabel {
+                background-color:#14191f;
             }             
         """)
 
@@ -325,7 +456,7 @@ class SideBanner(QFrame):
     #HTML for the actively selected button
     ACTIVE_BUTTON_STYLE = """
         QPushButton {
-            background-color: rgba(59,130,245,0.5);
+            background-color: rgba(1,47,99,0.5);
             color: white;
             border-left: 2px solid #3B82F6;
             border-radius: 5px;
@@ -338,13 +469,6 @@ class SideBanner(QFrame):
     
     def create_icon(self, icon_name, color="#FFFFFF"):
         return qta.icon(icon_name, color=color)
-    
-    def create_icon_label(self, icon_name, size=20, color="#FFFFFF"):
-        label = QLabel()
-        icon = qta.icon(icon_name, color=color)
-        label.setPixmap(icon.pixmap(size, size))
-
-        return label
 
     def __init__(self):
         super().__init__()
