@@ -25,7 +25,8 @@ class mainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Sensor Dashboard")
-        self.resize(1200, 700)
+        self.resize(1600, 800)
+        self.setMinimumSize(1600, 800)
 
         # Setting up pages and formatting their layout
         self.dashboard_page = dashboardPage()

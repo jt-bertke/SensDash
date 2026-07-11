@@ -6,6 +6,12 @@ from PySide6.QtWidgets import (
     QVBoxLayout
 )
 
+from PySide6.QtCore import (
+    QTimer,
+)
+
+import time
+import random
 
 from pages.utilities.cards import (
     sensorCard,
@@ -83,7 +89,18 @@ class dashboardPage(QWidget):
 
         Ecu_card = EcuCard()
         Drive_Train = DriveTrainCard()
+
         Sensor_Trends = SensorTrends()
+        self._test_timer = QTimer()
+        self._test_timer.timeout.connect(lambda: Sensor_Trends.add_data_point(
+            time.time(),
+            rpm=3000 + random.uniform(-500, 500),
+            current=30 + random.uniform(-5, 5),
+            voltage=45 + random.uniform(-2, 2),
+            temp=70 +random.uniform(-3, 3),
+        ))
+        self._test_timer.start(500)
+
         System_Log = SystemLog()
         Bottom_Log = BottomLog()
 

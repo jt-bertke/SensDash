@@ -9,13 +9,22 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtGui import(
-    QPixmap
+    QPixmap,
+    QFont
 )
 from PySide6.QtCore import (
     Qt,
     Signal,
 )
+
+from collections import deque
+
 import qtawesome as qta
+import pyqtgraph as pg
+
+pg.setConfigOption('background', '#14191f')
+pg.setConfigOption('foreground', '#6B7280')
+pg.setConfigOption('antialias', True)
 
 class EcuCard(QFrame):
     
@@ -55,23 +64,147 @@ class DriveTrainCard(QFrame):
             QSizePolicy.Expanding
         )
 
+class SecondsAxisItem(pg.AxisItem):
+    def tickStrings(self, values, scale, spacing):
+        return [f"{int(v)}s" for v in values]
+
 class SensorTrends(QFrame):
-    def __init__(self):
+    
+    SERIES = {
+        "rpm": {"label": "Motor Speed (RPM)", "color": "#3B82F6", "axis": "left"},
+        "current": {"label": "Motor Current (A)", "color": "#22C55E", "axis": "right"},
+        "voltage": {"label": "Battery Voltage (V)", "color": "#EAB308", "axis": "right"},
+        "temp": {"label": "Motor Temp (\u00b0F)", "color": "#A855F7", "axis": "right"}
+    }
+    
+    def __init__(self, window_seconds=60, max_points=600):
         super().__init__()
 
-        self.setObjectName("DriveTrainFrame")
+        self.window_seconds = window_seconds
+        self.time_data = deque(maxlen=max_points)
+        self.data = {key: deque(maxlen=max_points) for key in self.SERIES}
+
+        self.setObjectName("SensorTrendsFrame")
         self.setStyleSheet("""
-        #DriveTrainFrame{
-            background-color:#14191f;
+        #SensorTrendsFrame {
+            background-color: #14191f;
             border:1px solid #273341;
             border-radius:10px;
-        }                
+        }              
+        """)
+        
+        
+        title = QLabel("SENSOR TRENDS")
+        title.setStyleSheet("""
+            color:#A6B2C2;
+            font-size:12px;
+            font-weight:bold;
+            border:none;
+            background: transparent;
         """)
 
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
+        self.plot_widget = pg.PlotWidget(
+            axisItems = {'bottom': SecondsAxisItem(orientation='bottom')}
         )
+        self.plot_widget.setBackground('#14191f')
+        self.plot_widget.showGrid(x=True, y=True, alpha=0.15)
+        self.plot_widget.setXRange(-self.window_seconds, 0)
+        self.plot_widget.setYRange(0, 6000, padding = 0)
+        self.plot_widget.getAxis('left').setTickSpacing(major=1000, minor=500)
+        self.plot_widget.getAxis('right').setTickSpacing(major=20, minor=10)
+        
+
+        tick_font = QFont()
+        tick_font.setPointSize(8)
+
+        for axis_name in ('left', 'bottom', 'right'):
+            axis = self.plot_widget.getAxis(axis_name)
+            axis.setTickFont(tick_font)
+
+        self.plot_widget.getAxis('left').setTextPen(pg.mkPen(self.SERIES["rpm"]["color"]))
+        self.plot_widget.getAxis('right').setTextPen(pg.mkPen(self.SERIES["temp"]["color"]))
+        
+        plot_item = self.plot_widget.getPlotItem()
+
+        axis = self.plot_widget.getAxis('left')
+        axis.setStyle(maxTickLevel=1)
+
+        self.right_vb = pg.ViewBox()
+        plot_item.showAxis('right')
+        plot_item.scene().addItem(self.right_vb)
+        plot_item.getAxis('right').linkToView(self.right_vb)
+        self.right_vb.setXLink(plot_item.vb)
+        self.right_vb.setYRange(0, 120)
+
+        def sync_right_view():
+            self.right_vb.setGeometry(plot_item.vb.sceneBoundingRect())
+            self.right_vb.linkedViewChanged(plot_item.vb, self.right_vb.XAxis)
+        
+        plot_item.vb.sigResized.connect(sync_right_view)
+
+        self.curves = {}
+        for key, meta in self.SERIES.items():
+            pen = pg.mkPen(meta["color"], width = 2)
+            if meta["axis"] == "left":
+                self.curves[key] = plot_item.plot(pen=pen, name=meta["label"])
+            else:
+                curve = pg.PlotCurveItem(pen=pen)
+                self.right_vb.addItem(curve)
+                self.curves[key] = curve
+
+        plot_item.hideButtons()
+        plot_item.vb.setMouseEnabled(x=False, y=False)
+
+        self.right_vb.setMouseEnabled(x=False, y=False)
+        
+        self.plot_widget.getAxis('left').setWidth(45)
+        self.plot_widget.getAxis('right').setWidth(45)
+        
+        legend_row = self._build_legend()
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12,12,12,12)
+        layout.setSpacing(8)
+        layout.addWidget(title)
+        layout.addWidget(legend_row)
+        layout.addWidget(self.plot_widget)
+        self.setLayout(layout)
+
+    def _build_legend(self):
+        row = QHBoxLayout()
+        row.setSpacing(16)
+        row.setContentsMargins(0,0,0,0)
+        for meta in self.SERIES.values():
+            dot = QLabel("-")
+            dot.setStyleSheet(f"color:{meta['color']}; font-weight:bold; border:none; background:transparent;")
+            text = QLabel(meta["label"])
+            text.setStyleSheet("color:#6B7280; font-size:10px; border:none; background:transparent;")
+            pair = QHBoxLayout()
+            pair.setSpacing(4)
+            pair.addWidget(dot)
+            pair.addWidget(text)
+            row.addLayout(pair)
+        row.addStretch()
+        container = QFrame()
+        container.setStyleSheet("background:transparent; border:none;")
+        container.setLayout(row)
+        return container
+    
+    def add_data_point(self, timestamp, rpm, current, voltage, temp):
+        self.time_data.append(timestamp)
+        self.data["rpm"].append(rpm)
+        self.data["current"].append(current)
+        self.data["voltage"].append(voltage)
+        self.data["temp"].append(temp)
+        self._redraw()
+    
+    def _redraw(self):
+        if not self.time_data:
+            return
+        latest = self.time_data[-1]
+        t = [x - latest for x in self.time_data]
+        for key, curve in self.curves.items():
+            curve.setData(t, list(self.data[key]))
 
 class SystemLog(QFrame):
     def __init__(self):
