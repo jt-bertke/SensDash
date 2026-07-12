@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
-    QSizePolicy
+    QSizePolicy,
+    QScrollArea
 )
 
 from PySide6.QtGui import(
@@ -15,9 +16,16 @@ from PySide6.QtGui import(
 from PySide6.QtCore import (
     Qt,
     Signal,
+    QTimer,
+    QTime
 )
 
 from collections import deque
+
+from pages.utilities.fetcher import (
+    NetworkCheckWorker,
+    ConnectionManager,
+)
 
 import qtawesome as qta
 import pyqtgraph as pg
@@ -207,22 +215,119 @@ class SensorTrends(QFrame):
             curve.setData(t, list(self.data[key]))
 
 class SystemLog(QFrame):
-    def __init__(self):
-        super().__init__()
+    
+    LEVEL_COLORS = {
+        "info": "#3b82F6",
+        "success": "#3CCF4E",
+        "error": "#EF4444"
+    }
 
-        self.setObjectName("DriveTrainFrame")
+    def __init__(self, connection_manager, sensor_names):
+        super().__init__()
+        self.conn_mgr = connection_manager
+        self.sensor_names = sensor_names
+
+        self.setObjectName("SystemLog")
+        self.setObjectName("SystemLogFrame")
         self.setStyleSheet("""
-        #DriveTrainFrame{
-            background-color:#14191f;
-            border:1px solid #273341;
-            border-radius:10px;
-        }                
+            #SystemLogFrame {
+                background-color:#14191f;
+                border:1px solid #273341;
+                border-radius:10px;
+            }
+        """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        title = QLabel("SYSTEM LOG")
+        title.setStyleSheet("""
+            color:#A6B2C2; font-size:12px; font-weight:bold;
+            border:none; background:transparent;
         """)
 
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
+        self.entries_layout = QVBoxLayout()
+        self.entries_layout.setSpacing(10)
+        self.entries_layout.setContentsMargins(0, 0, 0, 0)
+        self.entries_layout.addStretch()  # keeps the list pinned to the top as it grows
+
+        entries_container = QWidget()
+        entries_container.setStyleSheet("background:transparent;")
+        entries_container.setLayout(self.entries_layout)
+
+        scroll = QScrollArea()
+        scroll.setWidget(entries_container)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("background:transparent; border:none;")
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(10)
+        main_layout.addWidget(title)
+        main_layout.addWidget(scroll)
+        self.setLayout(main_layout)
+
+        self.conn_mgr.sensor_status_changed.connect(self._on_sensor_status)
+        self.conn_mgr.system_status_changed.connect(self._on_system_status)
+        self.conn_mgr.overall_connection_changed.connect(self._on_overall_connection)
+
+        for name in self.sensor_names:
+            self.conn_mgr.register_sensor(name)
+
+        self._run_boot_sequence()
+    
+    def _run_boot_sequence(self):
+        self.add_entry("System boot", "info")
+        QTimer.singleShot(300, lambda: self.add_entry("Logging started", "info"))
+
+        delay = 600
+        for name in self.sensor_names:
+            QTimer.singleShot(delay, lambda n=name: self._boot_check_sensor(n))
+            delay += 300
+        
+        QTimer.singleShot(delay+200, lambda: self.add_entry("System connected", "success"))
+    
+    def _on_sensor_status(self, name, connected):
+        if connected:
+            self.add_entry(f"{name} reconnected", "success")
+        else:
+            self.add_entry(f"{name} disconnected", "error")
+    
+    def _on_system_status(self, healthy, message):
+        self.add_entry(message, "success" if healthy else "error")
+    
+    def _on_overall_connection(self, connected):
+        self.add_entry(
+            "System connected" if connected else "System disconnected",
+            "success" if connected else "error"
         )
+
+    def add_entry(self, message, level="info"):
+        row = QFrame()
+        row.setStyleSheet("background:transparent; border:none;")
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+
+        timestamp = QLabel(QTime.currentTime().toString("h:mm:ss"))
+        timestamp.setStyleSheet("color:#6B7280; font-size:11px; border:none; background:transparent;")
+        timestamp.setFixedWidth(55)
+
+        dot = QLabel("●")
+        color = self.LEVEL_COLORS.get(level, "#6B7280")
+        dot.setStyleSheet(f"color:{color}; font-size:10px; border:none; background:transparent;")
+
+        text = QLabel(message)
+        text.setStyleSheet("color:#D1D5DB; font-size:12px; border:none; background:transparent;")
+
+        layout.addWidget(timestamp)
+        layout.addWidget(dot)
+        layout.addWidget(text)
+        layout.addStretch()
+        row.setLayout(layout)
+
+        self.entries_layout.insertWidget(0, row)
+
+
 
 class BottomLog(QFrame):
     
@@ -489,10 +594,40 @@ class sensorCard(QFrame):
 
         self.setLayout(main_layout)
 
-class TopBanner(QFrame):
+class TopBanner(QFrame): 
+    
+    def _check_network(self):
+        self._net_worker = NetworkCheckWorker()
+        self._net_worker.status_changed.connect(self._update_network_icon)
+        self._net_worker.start()
+        
+    def _update_network_icon(self, connected):
+        color = "#3CCF4E" if connected else "#EF4444"
+        icon = qta.icon("ph.wifi-high-light" if connected else "ph.wifi-slash-light", color=color)
+        self.network.setPixmap(icon.pixmap(20,20))
 
-    def __init__(self):
+    def _update_status(self, connected):
+        if connected:
+            self.status.setText("● CONNECTED")
+            self.status.setStyleSheet("color:#009D22; font-size:12px;")
+        else:
+            self.status.setText("● DISCONNECTED")
+            self.status.setStyleSheet("color:#EF4444; font-size:12px;")
+
+    def _update_usb(self, connected):
+        color = "#FFFFFF" if connected else "#4B5563"
+        icon = qta.icon("mdi.usb", color=color)
+        self.connection.setPixmap(icon.pixmap(20,20))
+    
+    def _update_wifi_manual(self, connected):
+        color = "#3CCF4E" if connected else "#4B5563"
+        icon = qta.icon("ph.wifi-high-light" if connected else "ph.wifi-slash-light")
+        self.network.setPixmap(icon.pixmap(20,20))
+ 
+    def __init__(self, connection_manager):
         super().__init__()
+
+        self.conn_mgr = connection_manager
 
         #Main layout for the banner
         layout = QHBoxLayout()
@@ -519,9 +654,26 @@ class TopBanner(QFrame):
         wifi_icon = qta.icon("ph.wifi-high-light", color="#FFFFFF")
         wifi_pixmap = wifi_icon.pixmap(20, 20)
         self.network.setPixmap(wifi_pixmap)
+          
+        self.network_timer = QTimer(self)
+        self.network_timer.timeout.connect(self._check_network)
+        self.network_timer.start(5000)
 
         #Setting up clock (Need to add functionality to this later)
         self.clock = QLabel("5:11 PM")
+        self._update_clock()
+        
+        self.clock_timer = QTimer(self)
+        self.clock_timer.timeout.connect(self._update_clock)
+        self.clock_timer.start(1000)
+
+        #Connection
+        self.conn_mgr.overall_connection_changed.connect(self._update_status)
+        self.conn_mgr.usb_changed.connect(self._update_usb)
+        self.conn_mgr.wifi_changed.connect(self._update_wifi_manual)
+
+        self._update_status(self.conn_mgr.overall_connected)
+        self._update_usb(self.conn_mgr._usb_connected)
 
         #adding widgets to banner layout
         layout.addWidget(self.logo)
@@ -560,6 +712,8 @@ class TopBanner(QFrame):
             font-size: 12px;
             color: #FFFFFF;
         """)
+    def _update_clock(self):
+        self.clock.setText(QTime.currentTime().toString("h:mm AP"))
 
 class SideBanner(QFrame):
 
@@ -602,8 +756,13 @@ class SideBanner(QFrame):
     
     def create_icon(self, icon_name, color="#FFFFFF"):
         return qta.icon(icon_name, color=color)
+    
+    def _update_system_status(self, healthy, message):
+        color = "#3CCF4E" if healthy else "#EF4444"
+        self.system_card.status.setText(message)
+        self.system_card.status.setStyleSheet(f"color:{color}; font-size:10px; font-weight:bold;")
 
-    def __init__(self):
+    def __init__(self, connection_manager):
         super().__init__()
 
         
@@ -611,6 +770,9 @@ class SideBanner(QFrame):
             "System Status",
             "All Systems Normal"
         )
+
+        self.conn_mgr = connection_manager
+        self.conn_mgr.system_status_changed.connect(self._update_system_status)
 
         self.setObjectName("SideBanner")
         self.setFixedWidth(170)

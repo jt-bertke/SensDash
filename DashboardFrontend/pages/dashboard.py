@@ -24,7 +24,7 @@ from pages.utilities.cards import (
 
 class dashboardPage(QWidget):
 
-    def __init__(self):
+    def __init__(self, connection_manager):
         super().__init__()
         
         data_cluster = QGridLayout()
@@ -101,7 +101,11 @@ class dashboardPage(QWidget):
         ))
         self._test_timer.start(500)
 
-        System_Log = SystemLog()
+        System_Log = SystemLog(connection_manager, [
+            "ECU / OBD-II Link", "Coolant Temp", "Oil Pressure",
+            "Oil Temp", "TPMS", "Compass / GPS",
+        ])
+
         Bottom_Log = BottomLog()
 
         dash_layout = QGridLayout()
