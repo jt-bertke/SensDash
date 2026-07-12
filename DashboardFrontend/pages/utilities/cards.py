@@ -11,13 +11,17 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtGui import(
     QPixmap,
-    QFont
+    QFont,
+    QPainter,
+    QPen,
+    QColor
 )
 from PySide6.QtCore import (
     Qt,
     Signal,
     QTimer,
-    QTime
+    QTime,
+    QRectF
 )
 
 from collections import deque
@@ -34,6 +38,45 @@ pg.setConfigOption('background', '#14191f')
 pg.setConfigOption('foreground', '#6B7280')
 pg.setConfigOption('antialias', True)
 
+class ArcGauge(QWidget):
+
+    def __init__(self, label, unit="%", min_value=0, max_value=100, color="#3B82F6"):
+        super().__init__()
+        self.label = label
+        self.unit = unit
+        self.min_value = min_value
+        self.max_value = max_value
+        self.color = QColor(color)
+        self.value = min_value
+        self.setMinimumHeight(110)
+    
+    def set_value(self, value):
+        self.value = max(self.min_value, min(self.max_value, value))
+        self.update()
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        rect = QRectF(10, 10, self.width() - 20, self.width() - 20)
+        start_angle = 225 * 16
+        span_angle = -270 * 16
+
+        track_pen = QPen(QColor("#273341"), 8, Qt.SolidLine, Qt.RoundCap)
+        painter.setPen(track_pen)
+        painter.drawArc(rect, start_angle, span_angle)
+
+        fraction = (self.value - self.min_value) / (self.max_value - self.min_value)
+        value_pen = QPen(self.color, 8, Qt.SolidLine, Qt.RoundCap)
+        painter.setPen(value_pen)
+        painter.drawArc(rect, start_angle, int(span_angle * fraction))
+
+        painter.setPen(QColor("#FFFFFF"))
+        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        painter.drawText(self.rect(), Qt.AlignCenter, f"{self.value:.0f}{self.unit}")
+
+        painter.end()
+
 class EcuCard(QFrame):
     
     def __init__(self):
@@ -44,14 +87,134 @@ class EcuCard(QFrame):
         #EcuFrame{
             background-color:#14191f;
             border:1px solid #273341;
-            border-radius:10px;
+            border-radius:10px;        
         }
         """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
-        )
+        title = QLabel("ECU Status")
+        title.setStyleSheet("""
+            color:#A6B2C2; font-size:12px; font-weight:bold;
+            border:none; background:transparent;
+        """)
+
+        self.faults_layout = QVBoxLayout()
+        self.faults_layout.setSpacing(6)
+        self.faults_layout.setContentsMargins(0,0,0,0)
+        self.faults_layout.addStretch()
+
+        faults_container = QWidget()
+        faults_container.setStyleSheet("background:transparent;")
+        faults_container.setLayout(self.faults_layout)
+
+        faults_scroll = QScrollArea()
+        faults_scroll.setWidget(faults_container)
+        faults_scroll.setWidgetResizable(True)
+        faults_scroll.setFixedHeight(80)
+        faults_scroll.setFrameShape(QFrame.NoFrame)
+        faults_scroll.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 8px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #273341;
+                border-radius: 4px;
+                min-height: 24px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #3B4657;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+                background: none;
+                border: none;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
+
+        self._set_no_faults()
+
+        self.load_gauge = ArcGauge("Engine Load", unit="%", color="#3B82F6")
+        self.throttle_gauge = ArcGauge("Throttle Position", unit="%", color="#EAB308")
+
+        load_label = QLabel("ENGINE LOAD")
+        load_label.setAlignment(Qt.AlignCenter)
+        load_label.setStyleSheet("color:#6B7280; font-size:10px; border:none; background:transparent;")
+
+        throttle_label = QLabel("THROTTLE POSITION")
+        throttle_label.setAlignment(Qt.AlignCenter)
+        throttle_label.setStyleSheet("color:#6B7280; font-size:10px; border:none; background:transparent;")
+
+        load_col = QVBoxLayout()
+        load_col.addWidget(self.load_gauge)
+        load_col.addWidget(load_label)
+
+        throttle_col = QVBoxLayout()
+        throttle_col.addWidget(self.throttle_gauge)
+        throttle_col.addWidget(throttle_label)
+
+        gauges_layout = QHBoxLayout()
+        gauges_layout.addLayout(load_col)
+        gauges_layout.addLayout(throttle_col)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(12,12,12,12)
+        main_layout.setSpacing(10)
+        main_layout.addWidget(title)
+        main_layout.addWidget(faults_scroll)
+        main_layout.addLayout(gauges_layout)
+        self.setLayout(main_layout)
+
+    def _set_no_faults(self):
+        self._clear_faults()
+        row = QHBoxLayout()
+        dot = QLabel("●")
+        dot.setStyleSheet("color:#3CCF4E; font-size:10px; border:none; background:transparent;")
+        text = QLabel("No Active Faults")
+        text.setStyleSheet("color:#9CA3AF; font-size:11px; border:none; background:transparent;")
+        row.addWidget(dot)
+        row.addWidget(text)
+        row.addStretch()
+        wrapper = QFrame()
+        wrapper.setStyleSheet("background:transparent; border:none;")
+        wrapper.setLayout(row)
+        self.faults_layout.insertWidget(0, wrapper)
+    
+    def _clear_faults(self):
+        while self.faults_layout.count() > 1:
+            item = self.faults_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def add_fault(self, code, description):
+        self._clear_faults()
+        row = QHBoxLayout()
+        dot = QLabel("●")
+        dot.setStyleSheet("color:#EF4444; font-size:10px; border:none; background:transparent;")
+        text = QLabel(f"{code}: {description}")
+        text.setStyleSheet("color:#D1D5DB; font-size:11px; border:none; background:transparent;")
+        row.addWidget(dot)
+        row.addWidget(text)
+        row.addStretch()
+        wrapper = QFrame()
+        wrapper.setStyleSheet("background:transparent; border:none;")
+        wrapper.setLayout(row)
+        self.faults_layout.insertWidget(0, wrapper)
+    
+    def update_engine_load(self, value):
+        self.load_gauge.set_value(value)
+    
+    def update_throttle_position(self, value):
+        self.throttle_gauge.set_value(value)
+
 
 class DriveTrainCard(QFrame):
 
@@ -256,7 +419,33 @@ class SystemLog(QFrame):
         scroll = QScrollArea()
         scroll.setWidget(entries_container)
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("background:transparent; border:none;")
+        scroll.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: transparent;
+                width: 8px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #273341;
+                border-radius: 4px;
+                min-height: 24px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #3B4657;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+                background: none;
+                border: none;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
         scroll.setFrameShape(QFrame.NoFrame)
 
         main_layout = QVBoxLayout()
@@ -285,6 +474,10 @@ class SystemLog(QFrame):
             delay += 300
         
         QTimer.singleShot(delay+200, lambda: self.add_entry("System connected", "success"))
+    
+    def _boot_check_sensor(self, name):
+        self.conn_mgr.report_sensor_data(name)
+        self.add_entry(f"{name}: OK", "success")
     
     def _on_sensor_status(self, name, connected):
         if connected:
@@ -326,8 +519,6 @@ class SystemLog(QFrame):
         row.setLayout(layout)
 
         self.entries_layout.insertWidget(0, row)
-
-
 
 class BottomLog(QFrame):
     

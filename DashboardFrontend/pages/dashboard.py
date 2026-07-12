@@ -88,6 +88,14 @@ class dashboardPage(QWidget):
         )
 
         Ecu_card = EcuCard()
+        self._ecu_test_timer = QTimer()
+        self._ecu_test_timer.timeout.connect(lambda: (
+            Ecu_card.update_engine_load(random.uniform(10, 80)),
+            Ecu_card.update_throttle_position(random.uniform(0, 100))
+        ))
+        self._ecu_test_timer.start(500)
+        Ecu_card.add_fault("P0301", "Cylinder 1 Misfire Detected")
+        
         Drive_Train = DriveTrainCard()
 
         Sensor_Trends = SensorTrends()
