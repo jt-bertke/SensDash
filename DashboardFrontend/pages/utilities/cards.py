@@ -48,7 +48,7 @@ class ArcGauge(QWidget):
         self.max_value = max_value
         self.color = QColor(color)
         self.value = min_value
-        self.setMinimumHeight(110)
+        self.setMinimumSize(110, 110)
     
     def set_value(self, value):
         self.value = max(self.min_value, min(self.max_value, value))
@@ -58,7 +58,11 @@ class ArcGauge(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        rect = QRectF(10, 10, self.width() - 20, self.width() - 20)
+        side = min(self.width(), self.height()) - 20
+        x_offset = (self.width() - side) / 2
+        y_offset = (self.height() - side) / 2
+
+        rect = QRectF(x_offset, y_offset, side, side)
         start_angle = 225 * 16
         span_angle = -270 * 16
 
@@ -78,8 +82,8 @@ class ArcGauge(QWidget):
         painter.end()
 
 class EcuCard(QFrame):
-    
-    def __init__(self):
+
+    def __init__(self, connection_manager=None):
         super().__init__()
 
         self.setObjectName("EcuFrame")
@@ -87,20 +91,21 @@ class EcuCard(QFrame):
         #EcuFrame{
             background-color:#14191f;
             border:1px solid #273341;
-            border-radius:10px;        
+            border-radius:10px;
         }
         """)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        title = QLabel("ECU Status")
+        title = QLabel("ECU STATUS")
         title.setStyleSheet("""
             color:#A6B2C2; font-size:12px; font-weight:bold;
             border:none; background:transparent;
         """)
 
+        # --- Faults section, styled and structured exactly like SystemLog ---
         self.faults_layout = QVBoxLayout()
-        self.faults_layout.setSpacing(6)
-        self.faults_layout.setContentsMargins(0,0,0,0)
+        self.faults_layout.setSpacing(8)
+        self.faults_layout.setContentsMargins(0, 0, 0, 0)
         self.faults_layout.addStretch()
 
         faults_container = QWidget()
@@ -110,67 +115,66 @@ class EcuCard(QFrame):
         faults_scroll = QScrollArea()
         faults_scroll.setWidget(faults_container)
         faults_scroll.setWidgetResizable(True)
-        faults_scroll.setFixedHeight(80)
+        faults_scroll.setAlignment(Qt.AlignTop)   # forces content to the top, not centered
         faults_scroll.setFrameShape(QFrame.NoFrame)
         faults_scroll.setStyleSheet("""
-            QScrollArea {
-                background: transparent;
-                border: none;
-            }
-            QScrollBar:vertical {
-                background: transparent;
-                width: 8px;
-                margin: 0px;
-            }
-            QScrollBar::handle:vertical {
-                background: #273341;
-                border-radius: 4px;
-                min-height: 24px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #3B4657;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-                background: none;
-                border: none;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
+            QScrollArea { background: transparent; border: none; }
+            QScrollBar:vertical { background: transparent; width: 8px; margin: 0px; }
+            QScrollBar::handle:vertical { background: #273341; border-radius: 4px; min-height: 24px; }
+            QScrollBar::handle:vertical:hover { background: #3B4657; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; background: none; border: none; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
         """)
 
         self._set_no_faults()
 
+        # --- Divider ---
+        divider = QFrame()
+        divider.setFrameShape(QFrame.HLine)
+        divider.setFixedHeight(1)
+        divider.setStyleSheet("background-color: #273341; border: none;")
+
+        # --- Gauges (compact, secondary) ---
         self.load_gauge = ArcGauge("Engine Load", unit="%", color="#3B82F6")
         self.throttle_gauge = ArcGauge("Throttle Position", unit="%", color="#EAB308")
+        self.load_gauge.setFixedSize(80, 80)
+        self.throttle_gauge.setFixedSize(80, 80)
 
         load_label = QLabel("ENGINE LOAD")
         load_label.setAlignment(Qt.AlignCenter)
-        load_label.setStyleSheet("color:#6B7280; font-size:10px; border:none; background:transparent;")
+        load_label.setStyleSheet("color:#6B7280; font-size:9px; border:none; background:transparent;")
 
         throttle_label = QLabel("THROTTLE POSITION")
         throttle_label.setAlignment(Qt.AlignCenter)
-        throttle_label.setStyleSheet("color:#6B7280; font-size:10px; border:none; background:transparent;")
+        throttle_label.setStyleSheet("color:#6B7280; font-size:9px; border:none; background:transparent;")
 
         load_col = QVBoxLayout()
-        load_col.addWidget(self.load_gauge)
+        load_col.setSpacing(4)
+        load_col.addWidget(self.load_gauge, alignment=Qt.AlignCenter)
         load_col.addWidget(load_label)
 
         throttle_col = QVBoxLayout()
-        throttle_col.addWidget(self.throttle_gauge)
+        throttle_col.setSpacing(4)
+        throttle_col.addWidget(self.throttle_gauge, alignment=Qt.AlignCenter)
         throttle_col.addWidget(throttle_label)
 
         gauges_layout = QHBoxLayout()
         gauges_layout.addLayout(load_col)
         gauges_layout.addLayout(throttle_col)
 
+        gauges_widget = QWidget()
+        gauges_widget.setStyleSheet("background:transparent;")
+        gauges_widget.setLayout(gauges_layout)
+        gauges_widget.setFixedHeight(110)
+
+        # --- Assemble ---
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(12,12,12,12)
-        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(8)          # tightened from 10 -> 8, matches title-to-content feel
         main_layout.addWidget(title)
-        main_layout.addWidget(faults_scroll)
-        main_layout.addLayout(gauges_layout)
+        main_layout.addWidget(faults_scroll, 1)
+        main_layout.addWidget(divider)
+        main_layout.addWidget(gauges_widget)
         self.setLayout(main_layout)
 
     def _set_no_faults(self):
@@ -185,9 +189,10 @@ class EcuCard(QFrame):
         row.addStretch()
         wrapper = QFrame()
         wrapper.setStyleSheet("background:transparent; border:none;")
+        wrapper.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)  # never stretches vertically
         wrapper.setLayout(row)
         self.faults_layout.insertWidget(0, wrapper)
-    
+
     def _clear_faults(self):
         while self.faults_layout.count() > 1:
             item = self.faults_layout.takeAt(0)
@@ -206,12 +211,13 @@ class EcuCard(QFrame):
         row.addStretch()
         wrapper = QFrame()
         wrapper.setStyleSheet("background:transparent; border:none;")
+        wrapper.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         wrapper.setLayout(row)
         self.faults_layout.insertWidget(0, wrapper)
-    
+
     def update_engine_load(self, value):
         self.load_gauge.set_value(value)
-    
+
     def update_throttle_position(self, value):
         self.throttle_gauge.set_value(value)
 
