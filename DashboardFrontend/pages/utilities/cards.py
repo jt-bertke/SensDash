@@ -10,18 +10,20 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtGui import(
-    QPixmap,
     QFont,
     QPainter,
     QPen,
-    QColor
+    QColor,
+    QPainterPath,
+    QLinearGradient
 )
 from PySide6.QtCore import (
     Qt,
     Signal,
     QTimer,
     QTime,
-    QRectF
+    QRectF,
+    QPointF
 )
 
 from collections import deque
@@ -33,6 +35,7 @@ from pages.utilities.fetcher import (
 
 import qtawesome as qta
 import pyqtgraph as pg
+import math
 
 pg.setConfigOption('background', '#14191f')
 pg.setConfigOption('foreground', '#6B7280')
@@ -102,7 +105,6 @@ class EcuCard(QFrame):
             border:none; background:transparent;
         """)
 
-        # --- Faults section, styled and structured exactly like SystemLog ---
         self.faults_layout = QVBoxLayout()
         self.faults_layout.setSpacing(8)
         self.faults_layout.setContentsMargins(0, 0, 0, 0)
@@ -115,7 +117,7 @@ class EcuCard(QFrame):
         faults_scroll = QScrollArea()
         faults_scroll.setWidget(faults_container)
         faults_scroll.setWidgetResizable(True)
-        faults_scroll.setAlignment(Qt.AlignTop)   # forces content to the top, not centered
+        faults_scroll.setAlignment(Qt.AlignTop) 
         faults_scroll.setFrameShape(QFrame.NoFrame)
         faults_scroll.setStyleSheet("""
             QScrollArea { background: transparent; border: none; }
@@ -128,13 +130,11 @@ class EcuCard(QFrame):
 
         self._set_no_faults()
 
-        # --- Divider ---
         divider = QFrame()
         divider.setFrameShape(QFrame.HLine)
         divider.setFixedHeight(1)
         divider.setStyleSheet("background-color: #273341; border: none;")
 
-        # --- Gauges (compact, secondary) ---
         self.load_gauge = ArcGauge("Engine Load", unit="%", color="#3B82F6")
         self.throttle_gauge = ArcGauge("Throttle Position", unit="%", color="#EAB308")
         self.load_gauge.setFixedSize(80, 80)
@@ -167,7 +167,6 @@ class EcuCard(QFrame):
         gauges_widget.setLayout(gauges_layout)
         gauges_widget.setFixedHeight(110)
 
-        # --- Assemble ---
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(12, 12, 12, 12)
         main_layout.setSpacing(8)          # tightened from 10 -> 8, matches title-to-content feel
@@ -221,25 +220,141 @@ class EcuCard(QFrame):
     def update_throttle_position(self, value):
         self.throttle_gauge.set_value(value)
 
+class TirePressureCard(QFrame):
+    """Replaces DriveTrainCard. Minimalist car outline + PSI readout in each corner."""
 
-class DriveTrainCard(QFrame):
-
-    def __init__(self):
+    def __init__(self, target_psi=35):
         super().__init__()
 
-        self.setObjectName("DriveTrainFrame")
+        self.setObjectName("TirePressureFrame")
         self.setStyleSheet("""
-        #DriveTrainFrame{
+        #TirePressureFrame{
             background-color:#14191f;
             border:1px solid #273341;
             border-radius:10px;
         }                
         """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
-        )
+        title = QLabel("TIRES")
+        title.setStyleSheet("""
+            color:#A6B2C2; font-size:12px; font-weight:bold;
+            border:none; background:transparent;
+        """)
+
+        self.diagram = TireDiagram(target_psi=target_psi)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(10)
+        main_layout.addWidget(title)
+        main_layout.addWidget(self.diagram, 1)
+        self.setLayout(main_layout)
+
+    def update_tire(self, position, psi):
+        self.diagram.set_tire_pressure(position, psi)
+
+
+class TireDiagram(QWidget):
+    """Minimalist top-down drivetrain schematic with a PSI readout in each quadrant."""
+
+    def __init__(self, target_psi=35):
+        super().__init__()
+        self.setMinimumSize(200, 160)
+        self.target_psi = target_psi
+        self.tire_psi = {"fl": None, "fr": None, "rl": None, "rr": None}
+
+    def set_tire_pressure(self, position, psi):
+        self.tire_psi[position] = psi
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w, h = self.width(), self.height()
+        cx, cy = w / 2, h / 2
+
+        body_color = QColor("#3B4657")      # matches your card border/divider tone, brightened slightly
+        accent_color = QColor("#3B82F6")     # your dashboard's standard blue accent
+        wheel_color = QColor("#1F2937")      # dark wheel body, consistent with dark UI elements
+        wheel_outline = QColor("#3B4657")
+
+        # --- Car body: bigger footprint, fills more of the available space ---
+        body_w = w * 0.22
+        body_h = h * 0.68
+        body_rect = QRectF(cx - body_w / 2, cy - body_h / 2, body_w, body_h)
+        painter.setPen(QPen(body_color, 2))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRoundedRect(body_rect, body_w * 0.45, body_w * 0.45)
+
+        axle_half_width = w * 0.155
+        front_y = cy - body_h * 0.30
+        rear_y = cy + body_h * 0.30
+
+        # --- Driveshaft: accent color, reads as the active power path ---
+        shaft_pen = QPen(accent_color, 3, Qt.SolidLine, Qt.RoundCap)
+        painter.setPen(shaft_pen)
+        painter.drawLine(QPointF(cx, front_y), QPointF(cx, rear_y))
+
+        # --- Differentials: accent-colored junctions where power splits to the axle ---
+        diff_radius = 6
+        painter.setBrush(accent_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(QPointF(cx, front_y), diff_radius, diff_radius)
+        painter.drawEllipse(QPointF(cx, rear_y), diff_radius, diff_radius)
+
+        # subtle glow ring around each differential for a bit of depth
+        glow_pen = QPen(accent_color.lighter(160), 1)
+        painter.setPen(glow_pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(QPointF(cx, front_y), diff_radius + 3, diff_radius + 3)
+        painter.drawEllipse(QPointF(cx, rear_y), diff_radius + 3, diff_radius + 3)
+
+        # --- Axle lines: neutral body color, differential to each wheel ---
+        axle_pen = QPen(body_color, 2)
+        painter.setPen(axle_pen)
+        for axle_y in (front_y, rear_y):
+            painter.drawLine(QPointF(cx - axle_half_width, axle_y), QPointF(cx - diff_radius - 3, axle_y))
+            painter.drawLine(QPointF(cx + diff_radius + 3, axle_y), QPointF(cx + axle_half_width, axle_y))
+
+        # --- Wheels: larger, with a subtle outline for definition ---
+        wheel_w, wheel_h = 14, 26
+        wheel_rects = {
+            "fl": QRectF(cx - axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
+            "fr": QRectF(cx + axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
+            "rl": QRectF(cx - axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
+            "rr": QRectF(cx + axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
+        }
+        painter.setPen(QPen(wheel_outline, 1.5))
+        painter.setBrush(wheel_color)
+        for rect in wheel_rects.values():
+            painter.drawRoundedRect(rect, 4, 4)
+
+        # --- PSI labels ---
+        painter.setFont(QFont("Arial", 15, QFont.Bold))
+        painter.setPen(QColor("#D1D5DB"))
+
+        label_w, label_h = w * 0.23, 24
+        positions = {
+            "fl": QRectF(0, front_y - label_h / 2, label_w, label_h),
+            "fr": QRectF(w - label_w, front_y - label_h / 2, label_w, label_h),
+            "rl": QRectF(0, rear_y - label_h / 2, label_w, label_h),
+            "rr": QRectF(w - label_w, rear_y - label_h / 2, label_w, label_h),
+        }
+        alignments = {
+            "fl": Qt.AlignRight | Qt.AlignVCenter,
+            "fr": Qt.AlignLeft | Qt.AlignVCenter,
+            "rl": Qt.AlignRight | Qt.AlignVCenter,
+            "rr": Qt.AlignLeft | Qt.AlignVCenter,
+        }
+
+        for pos, rect in positions.items():
+            psi = self.tire_psi[pos]
+            text = f"{psi:.0f} psi" if psi is not None else "-- psi"
+            painter.drawText(rect, alignments[pos], text)
+
+        painter.end()
 
 class SecondsAxisItem(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

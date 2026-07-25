@@ -16,7 +16,7 @@ import random
 from pages.utilities.cards import (
     sensorCard,
     EcuCard,
-    DriveTrainCard,
+    TirePressureCard,
     SensorTrends,
     SystemLog,
     BottomLog
@@ -96,7 +96,11 @@ class dashboardPage(QWidget):
         self._ecu_test_timer.start(500)
         Ecu_card.add_fault("P0301", "Cylinder 1 Misfire Detected")
         
-        Drive_Train = DriveTrainCard()
+        Tire_Pressure = TirePressureCard()
+        Tire_Pressure.update_tire("fl", 34)
+        Tire_Pressure.update_tire("fr", 35)
+        Tire_Pressure.update_tire("rl", 33)
+        Tire_Pressure.update_tire("rr", 35)
 
         Sensor_Trends = SensorTrends()
         self._test_timer = QTimer()
@@ -129,7 +133,7 @@ class dashboardPage(QWidget):
         dash_layout.setRowStretch(2, 1)
 
         dash_layout.addWidget(Ecu_card, 0, 0, 1, 1)
-        dash_layout.addWidget(Drive_Train, 0, 1, 1, 1)
+        dash_layout.addWidget(Tire_Pressure, 0, 1, 1, 1)
         dash_layout.addWidget(data_cluster_widget, 0, 2, 1, 1)
         dash_layout.addWidget(Sensor_Trends, 1, 0, 1, 2)
         dash_layout.addWidget(System_Log, 1, 2, 1, 1)
