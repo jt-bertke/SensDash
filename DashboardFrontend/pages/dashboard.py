@@ -19,7 +19,10 @@ from pages.utilities.cards import (
     TirePressureCard,
     SensorTrends,
     SystemLog,
-    BottomLog
+    BottomLog,
+    DualStatCard,
+    CompassCard,
+    PlaceholderCard
 )
 
 class dashboardPage(QWidget):
@@ -36,48 +39,51 @@ class dashboardPage(QWidget):
         for col in range(2):
             data_cluster.setColumnStretch(col, 1)
 
-        rpm_card = sensorCard(
-            title="Motor Speed",
-            value=2500,
-            units="RPM"
+        self.compass_card = CompassCard()
+        
+        self.oil_card = DualStatCard(
+            "OIL PRESSURE / TEMP",
+            "Pressure", "--", "psi",
+            "Temp", "--", "F",
         )
 
-        temp_card = sensorCard(
-            title="Temperature",
-            value=68,
+        self.mileage_card = DualStatCard(
+            "GAS MILEAGE",
+            "Instant", "--", "mpg",
+            "Average", "--", "mpg"
+        )
+
+        self.trip_card = DualStatCard(
+            "TRIP A / B",
+            "Trip A", "--", "mi",
+            "Trip B", "--", "mi",
+        )
+
+        self.placeholder_card = PlaceholderCard()
+
+        self.motor_temp_card = sensorCard(
+            title="Coolant Temp",
+            value="--",
             units="F"
         )
 
-        voltage_card = sensorCard(
-            title="Voltage",
-            value=12.6,
-            units="V"
-        )
+        self._grid_test_timer = QTimer(self)
+        self._grid_test_timer.timeout.connect(lambda: (
+            self.compass_card.update_heading(random.uniform(0, 360)),
+            self.oil_card.update_value1(f"{random.uniform(30, 60):.0f}"),
+            self.oil_card.update_value2(f"{random.uniform(180, 230):.0f}"),
+            self.mileage_card.update_value1(f"{random.uniform(15, 25):.1f}"),
+            self.mileage_card.update_value2(f"{random.uniform(18, 22):.1f}"),
+            self.motor_temp_card.value_label.setText(f"{random.uniform(180, 220):.0f}"),
+        ))
+        self._grid_test_timer.start(1000)
 
-        current_card = sensorCard(
-            title="Current",
-            value=3.42,
-            units="A"
-        )
-
-        blank_card1 = sensorCard(
-            title="N/A",
-            value = 0.00,
-            units="N/A"
-        )
-
-        blank_card2 = sensorCard(
-            title="N/A",
-            value = 0.00,
-            units="N/A"
-        )
-
-        data_cluster.addWidget(rpm_card, 0, 0)
-        data_cluster.addWidget(temp_card, 0, 1)
-        data_cluster.addWidget(voltage_card, 1, 0)
-        data_cluster.addWidget(current_card, 1, 1)
-        data_cluster.addWidget(blank_card1, 2,0)
-        data_cluster.addWidget(blank_card2, 2,1)
+        data_cluster.addWidget(self.compass_card, 0, 0)
+        data_cluster.addWidget(self.placeholder_card, 0, 1)
+        data_cluster.addWidget(self.mileage_card, 1, 0)
+        data_cluster.addWidget(self.trip_card, 1, 1)
+        data_cluster.addWidget(self.oil_card, 2,0)
+        data_cluster.addWidget(self.motor_temp_card, 2,1)
 
 
         data_cluster_widget = QWidget()

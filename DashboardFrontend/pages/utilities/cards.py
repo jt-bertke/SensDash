@@ -253,7 +253,6 @@ class TirePressureCard(QFrame):
     def update_tire(self, position, psi):
         self.diagram.set_tire_pressure(position, psi)
 
-
 class TireDiagram(QWidget):
 
     def __init__(self, target_psi=35):
@@ -1194,3 +1193,187 @@ class SideBanner(QFrame):
             button.setStyleSheet(self.NORMAL_BUTTON_STYLE)
         
         active_button.setStyleSheet(self.ACTIVE_BUTTON_STYLE)
+
+class DualStatCard(QFrame):
+
+    def __init__(self, title, label1, value1, unit1, label2, value2, unit2):
+        super().__init__()
+
+        self.setObjectName("DualStatFrame")
+        self.setStyleSheet("""
+        #DualStatFrame {
+            background-color: #14191f;
+            border: 1px solid #273341;
+            border-radius: 12px;
+        }
+        QLabel { background-color: transparent; }
+        """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        title_label = QLabel(title)
+        title_label.setStyleSheet("color: #A6B2C2; font-size: 13px; font-weight: bold; border:none;")
+
+        self.value1_label = QLabel(str(value1))
+        self.value2_label = QLabel(str(value2))
+        for lbl in (self.value1_label, self.value2_label):
+            lbl.setStyleSheet("color:white; font-size:26px; font-weight:bold; border:none;")
+
+        self.unit1_label = QLabel(unit1)
+        self.unit2_label = QLabel(unit2)
+        for lbl in (self.unit1_label, self.unit2_label):
+            lbl.setStyleSheet("color:#3B82F6; font-size:11px; font-weight:bold; border:none;")
+
+        label1_widget = QLabel(label1)
+        label2_widget = QLabel(label2)
+        for lbl in (label1_widget, label2_widget):
+            lbl.setStyleSheet("color:#6B7280; font-size:10px; border:none;")
+
+        col1 = QVBoxLayout()
+        col1.setSpacing(2)
+        row1 = QHBoxLayout()
+        row1.addWidget(self.value1_label)
+        row1.addWidget(self.unit1_label)
+        row1.addStretch()
+        col1.addLayout(row1)
+        col1.addWidget(label1_widget)
+
+        col2 = QVBoxLayout()
+        col2.setSpacing(2)
+        row2 = QHBoxLayout()
+        row2.addWidget(self.value2_label)
+        row2.addWidget(self.unit2_label)
+        row2.addStretch()
+        col2.addLayout(row2)
+        col2.addWidget(label2_widget)
+
+        stats_layout = QHBoxLayout()
+        stats_layout.addLayout(col1)
+        stats_layout.addSpacing(20)
+        stats_layout.addLayout(col2)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(14, 14, 14, 14)
+        main_layout.setSpacing(10)
+        main_layout.addWidget(title_label)
+        main_layout.addStretch()
+        main_layout.addLayout(stats_layout)
+        main_layout.addStretch()
+        self.setLayout(main_layout)
+
+    def update_value1(self, value):
+        self.value1_label.setText(str(value))
+
+    def update_value2(self, value):
+        self.value2_label.setText(str(value))
+
+class CompassCard(QFrame):
+
+    def __init__(self):
+        super().__init__()
+
+        self.setObjectName("CompassFrame")
+        self.setStyleSheet("""
+        #CompassFrame {
+            background-color: #14191f;
+            border: 1px solid #273341;
+            border-radius: 12px;
+        }
+        """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        title = QLabel("COMPASS")
+        title.setStyleSheet("color:#A6B2C2; font-size:13px; font-weight:bold; border:none; background:transparent;")
+
+        self.compass_widget = CompassDial()
+
+        self.heading_label = QLabel("0°")
+        self.heading_label.setAlignment(Qt.AlignCenter)
+        self.heading_label.setStyleSheet("""
+            color:#FFFFFF; font-size:18px; font-weight:bold;
+            border:none; background:transparent;
+        """)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(14, 14, 14, 14)
+        main_layout.setSpacing(4)
+        main_layout.addWidget(title)
+        main_layout.addWidget(self.compass_widget, 1)
+        main_layout.addWidget(self.heading_label)
+        self.setLayout(main_layout)
+
+    def update_heading(self, degrees):
+        self.compass_widget.set_heading(degrees)
+        self.heading_label.setText(f"{degrees:.0f}°")
+
+
+class CompassDial(QWidget):
+
+    DIRECTIONS = [("N", 0), ("E", 90), ("S", 180), ("W", 270)]
+
+    def __init__(self):
+        super().__init__()
+        self.setMinimumSize(140, 120)
+        self.heading = 0
+
+    def set_heading(self, degrees):
+        self.heading = degrees % 360
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w, h = self.width(), self.height()
+        side = min(w, h) - 30   # a bit more margin now that labels sit close to the edge
+        cx, cy = w / 2, h / 2
+        radius = side / 2
+
+        painter.setPen(QPen(QColor("#273341"), 2))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(QPointF(cx, cy), radius, radius)
+
+        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        for label, angle in self.DIRECTIONS:
+            rad = math.radians(angle - 90)
+            label_x = cx + (radius - 16) * math.cos(rad)
+            label_y = cy + (radius - 16) * math.sin(rad)
+            color = QColor("#3B82F6") if label == "N" else QColor("#6B7280")
+            painter.setPen(color)
+            painter.drawText(QRectF(label_x - 10, label_y - 10, 20, 20), Qt.AlignCenter, label)
+
+        needle_len = radius - 28
+        rad = math.radians(self.heading - 90)
+        tip_x = cx + needle_len * math.cos(rad)
+        tip_y = cy + needle_len * math.sin(rad)
+
+        painter.setPen(QPen(QColor("#3B82F6"), 3, Qt.SolidLine, Qt.RoundCap))
+        painter.drawLine(QPointF(cx, cy), QPointF(tip_x, tip_y))
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#3B82F6"))
+        painter.drawEllipse(QPointF(cx, cy), 4, 4)
+
+        # heading text removed from here — now a QLabel below the dial in CompassCard
+        painter.end()
+
+class PlaceholderCard(QFrame):
+
+    def __init__(self, label="Coming Soon"):
+        super().__init__()
+        self.setObjectName("PlaceholderFrame")
+        self.setStyleSheet("""
+        #PlaceholderFrame {
+            background-color: #14191f;
+            border: 1px dashed #273341;
+            border-radius: 12px;
+        }
+        """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        text = QLabel(label)
+        text.setAlignment(Qt.AlignCenter)
+        text.setStyleSheet("color:#4B5563; font-size:13px; border:none; background:transparent;")
+
+        layout = QVBoxLayout()
+        layout.addWidget(text)
+        self.setLayout(layout)
