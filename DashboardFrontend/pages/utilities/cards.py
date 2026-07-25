@@ -221,7 +221,6 @@ class EcuCard(QFrame):
         self.throttle_gauge.set_value(value)
 
 class TirePressureCard(QFrame):
-    """Replaces DriveTrainCard. Minimalist car outline + PSI readout in each corner."""
 
     def __init__(self, target_psi=35):
         super().__init__()
@@ -256,7 +255,6 @@ class TirePressureCard(QFrame):
 
 
 class TireDiagram(QWidget):
-    """Minimalist top-down drivetrain schematic with a PSI readout in each quadrant."""
 
     def __init__(self, target_psi=35):
         super().__init__()
@@ -275,12 +273,11 @@ class TireDiagram(QWidget):
         w, h = self.width(), self.height()
         cx, cy = w / 2, h / 2
 
-        body_color = QColor("#3B4657")      # matches your card border/divider tone, brightened slightly
-        accent_color = QColor("#3B82F6")     # your dashboard's standard blue accent
-        wheel_color = QColor("#1F2937")      # dark wheel body, consistent with dark UI elements
+        body_color = QColor("#3B4657")      
+        accent_color = QColor("#3B82F6")    
+        wheel_color = QColor("#1F2937")     
         wheel_outline = QColor("#3B4657")
 
-        # --- Car body: bigger footprint, fills more of the available space ---
         body_w = w * 0.22
         body_h = h * 0.68
         body_rect = QRectF(cx - body_w / 2, cy - body_h / 2, body_w, body_h)
@@ -292,33 +289,28 @@ class TireDiagram(QWidget):
         front_y = cy - body_h * 0.30
         rear_y = cy + body_h * 0.30
 
-        # --- Driveshaft: accent color, reads as the active power path ---
         shaft_pen = QPen(accent_color, 3, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(shaft_pen)
         painter.drawLine(QPointF(cx, front_y), QPointF(cx, rear_y))
 
-        # --- Differentials: accent-colored junctions where power splits to the axle ---
         diff_radius = 6
         painter.setBrush(accent_color)
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(QPointF(cx, front_y), diff_radius, diff_radius)
         painter.drawEllipse(QPointF(cx, rear_y), diff_radius, diff_radius)
 
-        # subtle glow ring around each differential for a bit of depth
         glow_pen = QPen(accent_color.lighter(160), 1)
         painter.setPen(glow_pen)
         painter.setBrush(Qt.NoBrush)
         painter.drawEllipse(QPointF(cx, front_y), diff_radius + 3, diff_radius + 3)
         painter.drawEllipse(QPointF(cx, rear_y), diff_radius + 3, diff_radius + 3)
 
-        # --- Axle lines: neutral body color, differential to each wheel ---
         axle_pen = QPen(body_color, 2)
         painter.setPen(axle_pen)
         for axle_y in (front_y, rear_y):
             painter.drawLine(QPointF(cx - axle_half_width, axle_y), QPointF(cx - diff_radius - 3, axle_y))
             painter.drawLine(QPointF(cx + diff_radius + 3, axle_y), QPointF(cx + axle_half_width, axle_y))
 
-        # --- Wheels: larger, with a subtle outline for definition ---
         wheel_w, wheel_h = 14, 26
         wheel_rects = {
             "fl": QRectF(cx - axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
@@ -331,7 +323,6 @@ class TireDiagram(QWidget):
         for rect in wheel_rects.values():
             painter.drawRoundedRect(rect, 4, 4)
 
-        # --- PSI labels ---
         painter.setFont(QFont("Arial", 15, QFont.Bold))
         painter.setPen(QColor("#D1D5DB"))
 
