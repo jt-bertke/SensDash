@@ -1305,7 +1305,6 @@ class CompassCard(QFrame):
         self.compass_widget.set_heading(degrees)
         self.heading_label.setText(f"{degrees:.0f}°")
 
-
 class CompassDial(QWidget):
 
     DIRECTIONS = [("N", 0), ("E", 90), ("S", 180), ("W", 270)]
