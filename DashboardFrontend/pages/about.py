@@ -20,7 +20,6 @@ class aboutPage(QWidget):
         outer_layout.setContentsMargins(24, 24, 24, 24)
         outer_layout.setSpacing(16)
 
-        # --- Header: logo + title + version ---
         header = QHBoxLayout()
         header.setSpacing(14)
 
@@ -44,7 +43,6 @@ class aboutPage(QWidget):
         header.addLayout(title_block)
         header.addStretch()
 
-        # --- Description card ---
         description_card = self._build_card(
             "ABOUT",
             "SensDash is a custom sensor telemetry dashboard built for personal use, "
@@ -53,13 +51,11 @@ class aboutPage(QWidget):
             "hobby project — built for the fun of building it, not for commercial use."
         )
 
-        # --- Vehicle info card ---
         vehicle_card = self._build_card(
             "VEHICLE",
             "2009 Jeep Grand Cherokee Laredo\n3.7L V6 \u2014 AWD"
         )
 
-        # --- Tech stack card ---
         tech_items = [
             ("Python", "mdi.language-python"),
             ("PySide6 (Qt)", "mdi.widgets"),

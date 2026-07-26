@@ -13,9 +13,7 @@ from PySide6.QtGui import(
     QFont,
     QPainter,
     QPen,
-    QColor,
-    QPainterPath,
-    QLinearGradient
+    QColor
 )
 from PySide6.QtCore import (
     Qt,
@@ -27,11 +25,6 @@ from PySide6.QtCore import (
 )
 
 from collections import deque
-
-from pages.utilities.fetcher import (
-    NetworkCheckWorker,
-    ConnectionManager,
-)
 
 import qtawesome as qta
 import pyqtgraph as pg
@@ -632,103 +625,71 @@ class SystemLog(QFrame):
         self.entries_layout.insertWidget(0, row)
 
 class BottomLog(QFrame):
-    
+
     def create_icon(self, icon_title, color="#6B7280", size=25):
-        self.label = QLabel()
-
-        self.label.setContentsMargins(0,0,0,0)
-
+        label = QLabel()
+        label.setContentsMargins(0, 0, 0, 0)
         icon = qta.icon(str(icon_title), color=color)
-        self.label.setPixmap(icon.pixmap(size, size))
+        label.setPixmap(icon.pixmap(size, size))
+        return label
 
-        return self.label
-    
     def create_separator(self):
         line = QFrame()
         line.setFrameShape(QFrame.VLine)
         line.setFixedWidth(1)
-        line.setStyleSheet("""
-            background-color: #273341;
-            border: none;
-        """)
+        line.setStyleSheet("background-color: #273341; border: none;")
         return line
-    
-    def create_monitor_card(self, value, unit, label, icon):
-        #Overall Container of Card
-        self.monitor_card = QFrame()
 
-        self.monitor_card.setContentsMargins(0,0,0,0)
-        self.monitor_card.setObjectName("MonitorFrame")
-        
-        self.monitor_card.setStyleSheet("""
+    def create_monitor_card(self, name, value, unit, label, icon):
+        monitor_card = QFrame()
+        monitor_card.setObjectName("MonitorFrame")
+        monitor_card.setStyleSheet("""
         #MonitorFrame{
             background-color:#11161D;
             border-right: 1px solid #273341; 
         }                   
         """)
-        
-        #Top Text of the Monitor Card
-        monitor_card_top_text_layout = QHBoxLayout()
-        
-        self.value = QLabel(value)
-        self.unit = QLabel(unit)
-        
-        monitor_card_top_text_layout.addWidget(self.value, 1)
-        monitor_card_top_text_layout.addWidget(self.unit, 6)
 
-        monitor_card_top_text_layout.setSpacing(3)
-        monitor_card_top_text_layout.setContentsMargins(0,0,0,0)
+        top_text_layout = QHBoxLayout()
+        value_label = QLabel(value)
+        unit_label = QLabel(unit or "")
+        top_text_layout.addWidget(value_label, 1)
+        top_text_layout.addWidget(unit_label, 6)
+        top_text_layout.setSpacing(3)
+        top_text_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.value.setStyleSheet("""
-            font-size: 14px;
-            color: #6B7280;
-            font-weight: bold;
-        """)
+        value_label.setStyleSheet("font-size:14px; color:#6B7280; font-weight:bold;")
+        unit_label.setStyleSheet("font-size:10px; color:#6B7280; font-weight:none;")
 
-        self.unit.setStyleSheet("""
-            font-size: 10px;
-            color: #6B7280;
-            font-weight: none;
-        """)
-        
-        self.monitor_card_top_text = QWidget()
-        self.monitor_card_top_text.setLayout(monitor_card_top_text_layout)
+        top_text_widget = QWidget()
+        top_text_widget.setLayout(top_text_layout)
 
-        #Bottom text of card and overall text of card
-        monitor_card_text_layout = QVBoxLayout()
-        
-        monitor_card_text_layout.setSpacing(0)
-        monitor_card_text_layout.setContentsMargins(0,0,0,0)
-        
-        monitor_card_text_layout.addWidget(self.monitor_card_top_text)
-        
-        self.label = QLabel(label)
-        monitor_card_text_layout.addWidget(self.label)
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(0)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.addWidget(top_text_widget)
 
-        self.label.setStyleSheet("""
-            font-size: 10px;
-            color: #6B7280;
-            font-weight: none;
-        """)
-        
-        self.monitor_card_text = QWidget()
-        self.monitor_card_text.setLayout(monitor_card_text_layout)
+        label_widget = QLabel(label)
+        label_widget.setStyleSheet("font-size:10px; color:#6B7280; font-weight:none;")
+        text_layout.addWidget(label_widget)
 
-        #Overall Structure of Card
-        monitor_card_layout = QHBoxLayout()
-        
-        monitor_card_layout.setContentsMargins(0,0,0,0)
-        monitor_card_layout.setSpacing(6)
-        
-        monitor_card_layout.addWidget(icon, 1)
-        monitor_card_layout.addWidget(self.monitor_card_text, 6)
+        text_container = QWidget()
+        text_container.setLayout(text_layout)
 
-        self.monitor_card.setLayout(monitor_card_layout)
+        card_layout = QHBoxLayout()
+        card_layout.setContentsMargins(0, 0, 0, 0)
+        card_layout.setSpacing(6)
+        card_layout.addWidget(icon, 1)
+        card_layout.addWidget(text_container, 6)
+        monitor_card.setLayout(card_layout)
 
-        return self.monitor_card
-   
+        self.value_labels[name] = value_label
+        return monitor_card
+
     def __init__(self):
         super().__init__()
+
+        self.value_labels = {}
 
         self.setObjectName("DriveTrainFrame")
         self.setStyleSheet("""
@@ -738,44 +699,39 @@ class BottomLog(QFrame):
             border-radius:10px;
         }                
         """)
-
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
-        )
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         bottom_log_layout = QHBoxLayout()
 
-        line = QFrame()
-        line.setFrameShape(QFrame.VLine)
-        line.setStyleSheet("""
-            color: #273341;
-        """)
+        battery_voltage_icon = self.create_icon("fa6s.battery-half")
+        ambient_temp_icon = self.create_icon("fa5s.thermometer-half")
+        vehicle_speed_icon = self.create_icon("mdi6.speedometer")
+        motor_torque_icon = self.create_icon("fa6s.rotate")
+        drive_state_icon = self.create_icon("mdi.alpha-p-box-outline")
 
-        self.battery_voltage_icon = self.create_icon("fa6s.battery-half")
-        self.ambient_temp_icon = self.create_icon("fa5s.thermometer-half")
-        self.vehicle_speed_icon = self.create_icon("mdi6.speedometer")
-        self.motor_torque_icon = self.create_icon("fa6s.rotate")
-        self.drive_state_icon = self.create_icon("mdi.alpha-p-box-outline")
-
-        self.battery_voltage = self.create_monitor_card("12.6", "V", "Battery Voltage", self.battery_voltage_icon)
-        self.ambient_temp = self.create_monitor_card("25.3", "°C", "Ambient Temperature", self.ambient_temp_icon)
-        self.vehicle_speed = self.create_monitor_card("0.0", "MPH", "Vehicle Speed", self.vehicle_speed_icon)
-        self.motor_torque = self.create_monitor_card("0.0", "ft-lbs", "Motor Torque", self.motor_torque_icon)
-        self.drive_state = self.create_monitor_card("Park", None, "Drive State", self.drive_state_icon)
+        battery_voltage = self.create_monitor_card("battery_voltage", "12.6", "V", "Battery Voltage", battery_voltage_icon)
+        ambient_temp = self.create_monitor_card("ambient_temp", "25.3", "°C", "Ambient Temperature", ambient_temp_icon)
+        vehicle_speed = self.create_monitor_card("vehicle_speed", "0.0", "MPH", "Vehicle Speed", vehicle_speed_icon)
+        motor_torque = self.create_monitor_card("motor_torque", "0.0", "ft-lbs", "Motor Torque", motor_torque_icon)
+        drive_state = self.create_monitor_card("drive_state", "Park", None, "Drive State", drive_state_icon)
 
         bottom_log_layout.addWidget(self.create_separator(), 1)
-        bottom_log_layout.addWidget(self.battery_voltage, 1)
+        bottom_log_layout.addWidget(battery_voltage, 1)
         bottom_log_layout.addWidget(self.create_separator(), 1)
-        bottom_log_layout.addWidget(self.ambient_temp, 1)
-        bottom_log_layout.addWidget(self.create_separator(),1)
-        bottom_log_layout.addWidget(self.vehicle_speed, 1)
-        bottom_log_layout.addWidget(self.create_separator(),1)
-        bottom_log_layout.addWidget(self.motor_torque, 1)
-        bottom_log_layout.addWidget(self.create_separator(),1)
-        bottom_log_layout.addWidget(self.drive_state, 1)
+        bottom_log_layout.addWidget(ambient_temp, 1)
+        bottom_log_layout.addWidget(self.create_separator(), 1)
+        bottom_log_layout.addWidget(vehicle_speed, 1)
+        bottom_log_layout.addWidget(self.create_separator(), 1)
+        bottom_log_layout.addWidget(motor_torque, 1)
+        bottom_log_layout.addWidget(self.create_separator(), 1)
+        bottom_log_layout.addWidget(drive_state, 1)
 
         self.setLayout(bottom_log_layout)
+
+    def update_value(self, name, value):
+        label = self.value_labels.get(name)
+        if label is not None:
+            label.setText(str(value))
 
 class StatusCard(QFrame):
 
@@ -895,18 +851,11 @@ class sensorCard(QFrame):
         main_layout.addWidget(frame)
 
         self.setLayout(main_layout)
+    
+    def update_value(self, value):
+        self.value_label.setText(str(value))
 
 class TopBanner(QFrame): 
-    
-    def _check_network(self):
-        self._net_worker = NetworkCheckWorker()
-        self._net_worker.status_changed.connect(self._update_network_icon)
-        self._net_worker.start()
-        
-    def _update_network_icon(self, connected):
-        color = "#3CCF4E" if connected else "#EF4444"
-        icon = qta.icon("ph.wifi-high-light" if connected else "ph.wifi-slash-light", color=color)
-        self.network.setPixmap(icon.pixmap(20,20))
 
     def _update_status(self, connected):
         if connected:
@@ -956,10 +905,6 @@ class TopBanner(QFrame):
         wifi_icon = qta.icon("ph.wifi-high-light", color="#FFFFFF")
         wifi_pixmap = wifi_icon.pixmap(20, 20)
         self.network.setPixmap(wifi_pixmap)
-          
-        self.network_timer = QTimer(self)
-        self.network_timer.timeout.connect(self._check_network)
-        self.network_timer.start(5000)
 
         #Setting up clock (Need to add functionality to this later)
         self.clock = QLabel("5:11 PM")
