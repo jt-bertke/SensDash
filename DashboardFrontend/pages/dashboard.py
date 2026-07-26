@@ -64,10 +64,10 @@ class dashboardPage(QWidget):
         )
 
         data_cluster.addWidget(self.compass_card, 0, 0)
-        data_cluster.addWidget(self.oil_card, 0, 1)
+        data_cluster.addWidget(self.placeholder_card, 0, 1)
         data_cluster.addWidget(self.mileage_card, 1, 0)
         data_cluster.addWidget(self.trip_card, 1, 1)
-        data_cluster.addWidget(self.placeholder_card, 2, 0)
+        data_cluster.addWidget(self.oil_card, 2, 0)
         data_cluster.addWidget(self.motor_temp_card, 2, 1)
 
         data_cluster_widget = QWidget()

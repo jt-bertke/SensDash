@@ -959,6 +959,7 @@ class TopBanner(QFrame):
             font-size: 12px;
             color: #FFFFFF;
         """)
+    
     def _update_clock(self):
         self.clock.setText(QTime.currentTime().toString("h:mm AP"))
 

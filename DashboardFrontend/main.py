@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 from main_window import mainWindow
 
 app = QApplication(sys.argv)
+app.setStyle("Fusion")
 
 window = mainWindow()
 window.show()

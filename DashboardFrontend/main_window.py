@@ -30,20 +30,18 @@ class mainWindow(QMainWindow):
 
         self.setWindowTitle("Sensor Dashboard")
         self.resize(1200, 700)
-        self.setMinimumSize(1000, 600)
+        self.setMinimumSize(1600, 900)
 
         # --- Shared managers, created once and passed to whatever needs them ---
         self.connection_manager = ConnectionManager()
         self.telemetry_manager = TelemetryManager()
 
-        # Active data source. Swap this one line for a real feed later
-        # (e.g. SerialFeed, RadioFeed) — nothing else in the app changes.
         self.feed = SimulatedFeed(self.telemetry_manager, self.connection_manager)
         self.feed.start()
 
         # --- Pages ---
         self.dashboard_page = dashboardPage(self.connection_manager, self.telemetry_manager)
-        self.liveDataPage = liveDataPage()
+        self.liveDataPage = liveDataPage(self.telemetry_manager)
         self.logs_page = logsPage()
         self.settings_page = settingsPage()
         self.aboutPage = aboutPage()
