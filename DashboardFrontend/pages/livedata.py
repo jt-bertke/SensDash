@@ -84,7 +84,7 @@ COMBO_STYLE = f"""
 
 
 class liveDataPage(QWidget):
-    """Expanded single-metric time-series view, fed by the same JSON packet stream as the dashboard."""
+    #Expanded single-metric time-series view, fed by the same JSON packet stream as the dashboard.
 
     MAX_HISTORY_SECONDS = 600
 
@@ -126,11 +126,11 @@ class liveDataPage(QWidget):
         controls_layout.addWidget(self._labeled(self.style_selector, "STYLE"))
         controls_layout.addStretch()
 
-        # --- Legend ---
+        #Legend
         self.legend_label = QLabel()
         self.legend_label.setStyleSheet("font-size:12px; font-weight:bold; background:transparent; border:none;")
 
-        # --- Chart, background matched exactly to the card it sits in ---
+        #Chart, background matched exactly to the card it sits in
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground(CARD_BACKGROUND)
         self.plot_widget.showGrid(x=True, y=True, alpha=0.15)
@@ -138,7 +138,7 @@ class liveDataPage(QWidget):
         plot_item = self.plot_widget.getPlotItem()
         plot_item.hideButtons()
         plot_item.vb.setMouseEnabled(x=False, y=False)
-        plot_item.getViewBox().setBorder(None)   # removes pyqtgraph's default outline rect
+        plot_item.getViewBox().setBorder(None)
 
         for axis_name in ('left', 'bottom'):
             axis = self.plot_widget.getAxis(axis_name)
@@ -146,7 +146,7 @@ class liveDataPage(QWidget):
             axis.setTextPen(pg.mkPen('#6B7280'))
         self.plot_widget.getAxis('left').setWidth(50)
 
-        # --- Card wrapper, matching EcuCard/SystemLog/etc. ---
+        #Card wrapper, matching EcuCard/SystemLog/etc.
         card = QFrame()
         card.setObjectName("LiveDataCard")
         card.setStyleSheet(f"""

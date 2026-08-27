@@ -1,3 +1,8 @@
+#The fetcher file holds some logic of the future data stream. It is
+# mostly dummy data but will be setup to handle the data from the Pi.
+# Some classes are not being used anymore, but I haven't removed them
+# just in case I want to use them in the future.
+
 from PySide6.QtCore import (
     QThread,
     Signal,

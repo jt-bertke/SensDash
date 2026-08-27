@@ -18,15 +18,18 @@ from pages.utilities.cards import (
     PlaceholderCard
 )
 
+#DashboardPage is the main landing page of this application.
 class dashboardPage(QWidget):
 
     def __init__(self, connection_manager, telemetry_manager):
         super().__init__()
+
+        #Defining dummy data stream
         self.connection_manager = connection_manager
         self.telemetry_manager = telemetry_manager
         self._known_fault_codes = set()
 
-        # --- 3x2 sensor grid ---
+        #3x2 sensor grid
         data_cluster = QGridLayout()
         data_cluster.setContentsMargins(0, 0, 0, 0)
         data_cluster.setSpacing(3)
@@ -103,6 +106,9 @@ class dashboardPage(QWidget):
 
         self.telemetry_manager.packet_received.connect(self._on_packet)
 
+    #Packet stream logic. When a new data packet is received this function is called and updates
+    #the values in the 3x2 grid and other data blocks. It also handles faults which is the final
+    #piece of code at the bottom of the function.
     def _on_packet(self, packet):
         if "rpm" in packet:
             self.motor_temp_card 

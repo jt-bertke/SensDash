@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout
 )
 
+#Currently blank ... Coming soon
 class settingsPage(QWidget):
 
     def __init__(self):

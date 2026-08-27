@@ -22,24 +22,25 @@ from pages.utilities.fetcher import(
     SimulatedFeed
 )
 
-
+#This class handles the bulk of the fake data and the page orientation. More detailed comments below.
 class mainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
 
+        #Defines the window size to prevent formatting issues
         self.setWindowTitle("Sensor Dashboard")
         self.resize(1200, 700)
         self.setMinimumSize(1600, 900)
 
-        # --- Shared managers, created once and passed to whatever needs them ---
+        #Shared managers, created once and passed to whatever needs them
         self.connection_manager = ConnectionManager()
         self.telemetry_manager = TelemetryManager()
 
         self.feed = SimulatedFeed(self.telemetry_manager, self.connection_manager)
         self.feed.start()
 
-        # --- Pages ---
+        #Page initialization
         self.dashboard_page = dashboardPage(self.connection_manager, self.telemetry_manager)
         self.liveDataPage = liveDataPage(self.telemetry_manager)
         self.logs_page = logsPage()
@@ -55,6 +56,7 @@ class mainWindow(QMainWindow):
 
         self.Side_Banner = SideBanner(self.connection_manager)
 
+        #Logic to control user changing pages
         self.show_dashboard()
         self.Side_Banner.set_active_button(self.Side_Banner.dashboard_button)
 
@@ -90,6 +92,7 @@ class mainWindow(QMainWindow):
 
         self.setCentralWidget(container)
 
+    #Functions controlling user switching tabs
     def show_dashboard(self):
         self.pages.setCurrentWidget(self.dashboard_page)
         self.Side_Banner.set_active_button(self.Side_Banner.dashboard_button)

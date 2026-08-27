@@ -19,15 +19,11 @@ from PySide6.QtWidgets import (
 )
 import qtawesome as qta
 
-
+#Simple data logger page: lists recorded sensor sessions and lets the
+#user export them to CSV. Session data is currently placeholder/dummy
+#data -- swap `self.sessions` population for real records once the
+#Pi telemetry pipeline is writing logs.
 class logsPage(QWidget):
-    """
-    Simple data logger page: lists recorded sensor sessions and lets the
-    user export them to CSV. Session data is currently placeholder/dummy
-    data -- swap `self.sessions` population for real records once the
-    Pi telemetry pipeline is writing logs.
-    """
-
     def __init__(self):
         super().__init__()
 
@@ -186,7 +182,7 @@ class logsPage(QWidget):
             }
         """
 
-    # Dummy data generation (swap out once real telemetry logging exists)
+    # Dummy data generation
     def _generate_dummy_sessions(self):
         now = datetime.now()
         return [
@@ -304,11 +300,6 @@ class logsPage(QWidget):
 
     # Future integration hook
     def add_session(self, session_id, date, records):
-        """
-        Append a real logged session (e.g. once telemetry data starts
-        flowing from ConnectionManager). `records` should be a list of
-        dicts matching the keys used in _write_sessions_to_csv.
-        """
         duration_sec = records[-1]["time_s"] if records else 0
         self.sessions.append({
             "id": session_id,

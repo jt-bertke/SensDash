@@ -10,7 +10,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import qtawesome as qta
 
-
+#Simple about page for my application. This doesn't really serve any purpose
+#Other than making the application look polished.
 class aboutPage(QWidget):
 
     def __init__(self):

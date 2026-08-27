@@ -1,3 +1,13 @@
+#This file contains the core functions in my program. Each class represents
+# a new reusable card or specialized cards that are then pulled to each page.
+# If you are inclined to read each function, they contain brief comments about
+# how they work or what they are. You might even stumble upon some classes I 
+# created when I was first
+# learning PySide6.
+
+#P.S. most of these classes do not handle any logic other than their actual designs.
+# They are setup to avoid having any data touch the backend.
+
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -34,10 +44,13 @@ pg.setConfigOption('background', '#14191f')
 pg.setConfigOption('foreground', '#6B7280')
 pg.setConfigOption('antialias', True)
 
+#One of the styles I use in the 3x2 gauge cluster
 class ArcGauge(QWidget):
 
     def __init__(self, label, unit="%", min_value=0, max_value=100, color="#3B82F6"):
         super().__init__()
+
+        #Starting initialization of inputed values.
         self.label = label
         self.unit = unit
         self.min_value = min_value
@@ -45,15 +58,21 @@ class ArcGauge(QWidget):
         self.color = QColor(color)
         self.value = min_value
         self.setMinimumSize(110, 110)
-    
+
+    #Simple function to be reused. Updates inputted values.
     def set_value(self, value):
         self.value = max(self.min_value, min(self.max_value, value))
         self.update()
-    
+
+    #Bulk of the card design lies here.
     def paintEvent(self, event):
+        #I opted using the painter tool since it makes drawing
+        #circles or other rounded shapes trivial. It also functions very well
+        #with ever changing values.
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
+        #Defining dimensions of our shape
         side = min(self.width(), self.height()) - 20
         x_offset = (self.width() - side) / 2
         y_offset = (self.height() - side) / 2
@@ -62,6 +81,9 @@ class ArcGauge(QWidget):
         start_angle = 225 * 16
         span_angle = -270 * 16
 
+        #Begin the painting logic. This code essentially begins tracing the original dimensions
+        #i provided in the shape of an arc. Each time a new value is updated, this function is called
+        #to repaint the arc. Hence the name arcgauge.
         track_pen = QPen(QColor("#273341"), 8, Qt.SolidLine, Qt.RoundCap)
         painter.setPen(track_pen)
         painter.drawArc(rect, start_angle, span_angle)
@@ -77,11 +99,14 @@ class ArcGauge(QWidget):
 
         painter.end()
 
+#Handles the creation of the ECU card on the dashboard
 class EcuCard(QFrame):
 
     def __init__(self, connection_manager=None):
         super().__init__()
 
+        #Everything that follows here is purely cosmetic. The only logic 
+        # in this main block is the initialization of a few arc gauge objects.
         self.setObjectName("EcuFrame")
         self.setStyleSheet("""
         #EcuFrame{
@@ -162,13 +187,15 @@ class EcuCard(QFrame):
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.setSpacing(8)          # tightened from 10 -> 8, matches title-to-content feel
+        main_layout.setSpacing(8)
         main_layout.addWidget(title)
         main_layout.addWidget(faults_scroll, 1)
         main_layout.addWidget(divider)
         main_layout.addWidget(gauges_widget)
         self.setLayout(main_layout)
 
+    #Function that sets layout to a "No Faults" design. This function is called in tandem
+    # with the on_packet function in dashboard.py
     def _set_no_faults(self):
         self._clear_faults()
         row = QHBoxLayout()
@@ -181,16 +208,18 @@ class EcuCard(QFrame):
         row.addStretch()
         wrapper = QFrame()
         wrapper.setStyleSheet("background:transparent; border:none;")
-        wrapper.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)  # never stretches vertically
+        wrapper.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         wrapper.setLayout(row)
         self.faults_layout.insertWidget(0, wrapper)
 
+    #This function is also used as a utility in other functions throughout the program
     def _clear_faults(self):
         while self.faults_layout.count() > 1:
             item = self.faults_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
+    #Similar to the previous functions this one is called along with the on_packet function.
     def add_fault(self, code, description):
         self._clear_faults()
         row = QHBoxLayout()
@@ -207,12 +236,17 @@ class EcuCard(QFrame):
         wrapper.setLayout(row)
         self.faults_layout.insertWidget(0, wrapper)
 
+    #These two functions just handle value updates when a new data packet is received
     def update_engine_load(self, value):
         self.load_gauge.set_value(value)
 
     def update_throttle_position(self, value):
         self.throttle_gauge.set_value(value)
 
+#This class made me lose sleep. It's a lot of cosmetic HTML and PySide6.
+# i won't go into depth on how the painter logic works. However, for the reader
+# it works similarly to the ecuCard but with many different painters working in tandem
+# with various different dimensions.
 class TirePressureCard(QFrame):
 
     def __init__(self, target_psi=35):
@@ -339,10 +373,14 @@ class TireDiagram(QWidget):
 
         painter.end()
 
+#This class at one point was useful. Now its not, however if I remove it
+# the entire program crashes. Could not tell you why.
 class SecondsAxisItem(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):
         return [f"{int(v)}s" for v in values]
 
+#This class utilizes the pyqtgraph library to draw and continuously update the dashboard
+# page graphing.
 class SensorTrends(QFrame):
     
     SERIES = {
@@ -355,10 +393,12 @@ class SensorTrends(QFrame):
     def __init__(self, window_seconds=60, max_points=600):
         super().__init__()
 
+        #Initialization
         self.window_seconds = window_seconds
         self.time_data = deque(maxlen=max_points)
         self.data = {key: deque(maxlen=max_points) for key in self.SERIES}
 
+        #Cosmetics
         self.setObjectName("SensorTrendsFrame")
         self.setStyleSheet("""
         #SensorTrendsFrame {
@@ -378,6 +418,7 @@ class SensorTrends(QFrame):
             background: transparent;
         """)
 
+        #Plot widget design. This controls the actual formatting of the plot.
         self.plot_widget = pg.PlotWidget(
             axisItems = {'bottom': SecondsAxisItem(orientation='bottom')}
         )
@@ -417,6 +458,7 @@ class SensorTrends(QFrame):
         
         plot_item.vb.sigResized.connect(sync_right_view)
 
+        #This is the drawing logic of the plotting.
         self.curves = {}
         for key, meta in self.SERIES.items():
             pen = pg.mkPen(meta["color"], width = 2)
@@ -427,6 +469,7 @@ class SensorTrends(QFrame):
                 self.right_vb.addItem(curve)
                 self.curves[key] = curve
 
+        #More cosmetics
         plot_item.hideButtons()
         plot_item.vb.setMouseEnabled(x=False, y=False)
 
@@ -445,6 +488,7 @@ class SensorTrends(QFrame):
         layout.addWidget(self.plot_widget)
         self.setLayout(layout)
 
+    #This function controls the design and layout of the legend.
     def _build_legend(self):
         row = QHBoxLayout()
         row.setSpacing(16)
@@ -464,7 +508,9 @@ class SensorTrends(QFrame):
         container.setStyleSheet("background:transparent; border:none;")
         container.setLayout(row)
         return container
-    
+
+    #This logic handles the actual values of the graph. Telling the plotting logic
+    # where to put the points on the graph.
     def add_data_point(self, timestamp, rpm, current, voltage, temp):
         self.time_data.append(timestamp)
         self.data["rpm"].append(rpm)
@@ -472,7 +518,8 @@ class SensorTrends(QFrame):
         self.data["voltage"].append(voltage)
         self.data["temp"].append(temp)
         self._redraw()
-    
+
+    #This just tells the painter logic to restart. Called when a new value hits the plotting logic.
     def _redraw(self):
         if not self.time_data:
             return
@@ -481,6 +528,8 @@ class SensorTrends(QFrame):
         for key, curve in self.curves.items():
             curve.setData(t, list(self.data[key]))
 
+#This class handles the updates in the system log card. It describes how the program
+# as a whole is functioning. Mainly cosmetic but it does handle dummy data as well.
 class SystemLog(QFrame):
     
     LEVEL_COLORS = {
@@ -624,6 +673,9 @@ class SystemLog(QFrame):
 
         self.entries_layout.insertWidget(0, row)
 
+#This is the only card left from when I first designed this program. It's the bottom
+# wrapper you see in the program. It handles the design and cosmetics of the wrapper.
+# It also provides functionality to the data stream.
 class BottomLog(QFrame):
 
     def create_icon(self, icon_title, color="#6B7280", size=25):
@@ -733,6 +785,7 @@ class BottomLog(QFrame):
         if label is not None:
             label.setText(str(value))
 
+#Another relic of me learning the language.
 class StatusCard(QFrame):
 
     def __init__(self, title, status):
@@ -789,6 +842,8 @@ class StatusCard(QFrame):
             font-weight:bold;
         """)
 
+# Also an obsolete card. I just can't bring myself to remove it.
+# This card is a reminder of where I came from.
 class sensorCard(QFrame):
 
     def __init__(self, title, value, units):
@@ -963,6 +1018,8 @@ class TopBanner(QFrame):
     def _update_clock(self):
         self.clock.setText(QTime.currentTime().toString("h:mm AP"))
 
+#The bulk of the side bar wrapper. It only handles the actual logic of switching
+# the sidebar styling. This does not control which pages the program switches to.
 class SideBanner(QFrame):
 
     dashboard_clicked = Signal()
@@ -1140,6 +1197,8 @@ class SideBanner(QFrame):
         
         active_button.setStyleSheet(self.ACTIVE_BUTTON_STYLE)
 
+#Specialized widget. Nothing special about it other than cosmetic HTML and PySide6.
+# It is setup to handle data in the future.
 class DualStatCard(QFrame):
 
     def __init__(self, title, label1, value1, unit1, label2, value2, unit2):
@@ -1212,6 +1271,7 @@ class DualStatCard(QFrame):
     def update_value2(self, value):
         self.value2_label.setText(str(value))
 
+#See below class
 class CompassCard(QFrame):
 
     def __init__(self):
@@ -1251,6 +1311,8 @@ class CompassCard(QFrame):
         self.compass_widget.set_heading(degrees)
         self.heading_label.setText(f"{degrees:.0f}°")
 
+# Dummy compass widget. Will eventually have true ECU data in the future
+# Uses same logic as other painter cards.
 class CompassDial(QWidget):
 
     DIRECTIONS = [("N", 0), ("E", 90), ("S", 180), ("W", 270)]
@@ -1269,7 +1331,7 @@ class CompassDial(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         w, h = self.width(), self.height()
-        side = min(w, h) - 30   # a bit more margin now that labels sit close to the edge
+        side = min(w, h) - 30   
         cx, cy = w / 2, h / 2
         radius = side / 2
 
@@ -1301,6 +1363,8 @@ class CompassDial(QWidget):
         # heading text removed from here — now a QLabel below the dial in CompassCard
         painter.end()
 
+#This was used during the development of this program. Pretty much obsolete, but
+# a relic of my time here.
 class PlaceholderCard(QFrame):
 
     def __init__(self, label="Coming Soon"):
