@@ -14,9 +14,10 @@ from pages.utilities.cards import (
     SystemLog,
     BottomLog,
     DualStatCard,
-    CompassCard,
-    PlaceholderCard
+    CompassCard
 )
+
+from pages.utilities.theme import PAGE_MARGIN
 
 #DashboardPage is the main landing page of this application.
 class dashboardPage(QWidget):
@@ -58,7 +59,11 @@ class dashboardPage(QWidget):
             "Trip B", "--", "mi",
         )
 
-        self.placeholder_card = PlaceholderCard()
+        self.rpm_card = sensorCard(
+            title="Engine Speed",
+            value="--",
+            units="RPM"
+        )
 
         self.motor_temp_card = sensorCard(
             title="Coolant Temp",
@@ -67,12 +72,11 @@ class dashboardPage(QWidget):
         )
 
         data_cluster.addWidget(self.compass_card, 0, 0)
-        data_cluster.addWidget(self.placeholder_card, 0, 1)
+        data_cluster.addWidget(self.rpm_card, 0, 1)
         data_cluster.addWidget(self.mileage_card, 1, 0)
         data_cluster.addWidget(self.trip_card, 1, 1)
         data_cluster.addWidget(self.oil_card, 2, 0)
         data_cluster.addWidget(self.motor_temp_card, 2, 1)
-
         data_cluster_widget = QWidget()
         data_cluster_widget.setLayout(data_cluster)
         data_cluster_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -88,6 +92,7 @@ class dashboardPage(QWidget):
 
         dash_layout = QGridLayout()
         dash_layout.setSpacing(12)
+        dash_layout.setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN)
         dash_layout.setColumnStretch(0, 1)
         dash_layout.setColumnStretch(1, 1)
         dash_layout.setColumnStretch(2, 1)
@@ -111,9 +116,7 @@ class dashboardPage(QWidget):
     #piece of code at the bottom of the function.
     def _on_packet(self, packet):
         if "rpm" in packet:
-            self.motor_temp_card 
-
-        if "rpm" in packet:
+            self.rpm_card.update_value(f"{packet['rpm']:,.0f}")
             self.connection_manager.report_sensor_data("RPM")
         if "motor_current" in packet:
             self.connection_manager.report_sensor_data("Motor Current")

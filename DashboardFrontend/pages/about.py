@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import qtawesome as qta
 
+from pages.utilities.theme import PAGE_MARGIN
+
 #Simple about page for my application. This doesn't really serve any purpose
 #Other than making the application look polished.
 class aboutPage(QWidget):
@@ -18,7 +20,7 @@ class aboutPage(QWidget):
         super().__init__()
 
         outer_layout = QVBoxLayout()
-        outer_layout.setContentsMargins(24, 24, 24, 24)
+        outer_layout.setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN)
         outer_layout.setSpacing(16)
 
         header = QHBoxLayout()
@@ -67,9 +69,13 @@ class aboutPage(QWidget):
         tech_card = self._build_icon_list_card("TECH STACK", tech_items)
 
         outer_layout.addLayout(header)
+        lower_row = QHBoxLayout()
+        lower_row.setSpacing(16)
+        lower_row.addWidget(vehicle_card, 1, Qt.AlignTop)
+        lower_row.addWidget(tech_card, 1, Qt.AlignTop)
+
         outer_layout.addWidget(description_card)
-        outer_layout.addWidget(vehicle_card)
-        outer_layout.addWidget(tech_card)
+        outer_layout.addLayout(lower_row)
         outer_layout.addStretch()
 
         self.setLayout(outer_layout)

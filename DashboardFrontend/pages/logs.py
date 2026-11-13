@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 import qtawesome as qta
+from pages.utilities.theme import PageHeader, PAGE_MARGIN
 
 #Simple data logger page: lists recorded sensor sessions and lets the
 #user export them to CSV. Session data is currently placeholder/dummy
@@ -35,23 +36,7 @@ class logsPage(QWidget):
         self.sessions = self._generate_dummy_sessions()
 
         #Header
-        title = QLabel("Data Logger")
-        title.setStyleSheet("""
-            color: #FFFFFF;
-            font-size: 20px;
-            font-weight: bold;
-        """)
-
-        subtitle = QLabel("Review and export recorded sensor sessions")
-        subtitle.setStyleSheet("""
-            color: #6B7280;
-            font-size: 12px;
-        """)
-
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(2)
-        header_layout.addWidget(title)
-        header_layout.addWidget(subtitle)
+        page_header = PageHeader("Data Logger", "Review and export recorded sensor sessions")
 
         #Toolbar (export / clear buttons)
         self.export_selected_btn = QPushButton(" Export Selected")
@@ -92,9 +77,19 @@ class logsPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        for col in range(1, 5):
-            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
+        self.table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        table_header = self.table.horizontalHeader()
+        table_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        for col, width in zip(range(1, 5), (180, 130, 110, 110)):
+            table_header.setSectionResizeMode(col, QHeaderView.Fixed)
+            self.table.setColumnWidth(col, width)
+        table_header.setDefaultAlignment(Qt.AlignCenter)
+        table_header.setHighlightSections(False)
+        self.table.verticalHeader().setDefaultSectionSize(44)
+        self.table.setAlternatingRowColors(True)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        
 
         self.table.setStyleSheet("""
             QTableWidget {
@@ -103,19 +98,20 @@ class logsPage(QWidget):
                 border-radius: 10px;
                 color: #E5E7EB;
                 gridline-color: #273341;
-                font-size: 12px;
+                alternate-background-color: #171d26;
+                font-size: 13px;
             }
             QHeaderView::section {
                 background-color: #1A222C;
                 color: #9CA3AF;
-                padding: 8px;
+                padding: 8px 14px;
                 border: none;
                 border-bottom: 1px solid #273341;
                 font-size: 11px;
                 font-weight: bold;
             }
             QTableWidget::item {
-                padding: 6px;
+                padding: 6px 14px;
             }
             QTableWidget::item:selected {
                 background-color: rgba(59,130,246,0.25);
@@ -141,9 +137,9 @@ class logsPage(QWidget):
 
         #Page layout
         layout = QVBoxLayout()
-        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN)
         layout.setSpacing(14)
-        layout.addLayout(header_layout)
+        layout.addWidget(page_header)
         layout.addLayout(toolbar_layout)
         layout.addWidget(table_frame)
         layout.addWidget(self.status_label)

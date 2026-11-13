@@ -13,6 +13,9 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from pages.utilities.cards import SecondsAxisItem
+from pages.utilities.theme import PageHeader, BG, PAGE_MARGIN, chevron_path
+
 
 METRICS = {
     "rpm":               {"label": "Motor Speed",      "unit": "RPM",    "color": "#3B82F6"},
@@ -37,11 +40,12 @@ WINDOW_OPTIONS = {
 
 STYLE_OPTIONS = ["Line", "Line + Points"]
 
-PAGE_BACKGROUND = "#0D1117"
+PAGE_BACKGROUND = BG
 CARD_BACKGROUND = "#14191f"
 CARD_BORDER = "#273341"
 
-COMBO_STYLE = f"""
+def combo_style():
+    return f"""
     QComboBox {{
         background-color: {PAGE_BACKGROUND};
         color: #D1D5DB;
@@ -63,12 +67,9 @@ COMBO_STYLE = f"""
         border-bottom-right-radius: 6px;
     }}
     QComboBox::down-arrow {{
-        image: none;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 5px solid #6B7280;
-        width: 0px;
-        height: 0px;
+        image: url("{chevron_path}");
+        width: 10px;
+        height: 10px;
         margin-right: 8px;
     }}
     QComboBox QAbstractItemView {{
@@ -96,8 +97,7 @@ class liveDataPage(QWidget):
 
         self.setStyleSheet(f"background-color:{PAGE_BACKGROUND};")
 
-        title = QLabel("LIVE DATA")
-        title.setStyleSheet("color:#A6B2C2; font-size:14px; font-weight:bold; background:transparent; border:none;")
+        title = PageHeader("Live Data", "Single-sensor history from live telemetry stream")
 
         # --- Controls ---
         self.metric_selector = QComboBox()
@@ -116,7 +116,7 @@ class liveDataPage(QWidget):
         self.style_selector.currentTextChanged.connect(self._rebuild_curve)
 
         for combo in (self.metric_selector, self.window_selector, self.style_selector):
-            combo.setStyleSheet(COMBO_STYLE)
+            combo.setStyleSheet(combo_style())
             combo.setMinimumWidth(160)
 
         controls_layout = QHBoxLayout()
@@ -131,7 +131,9 @@ class liveDataPage(QWidget):
         self.legend_label.setStyleSheet("font-size:12px; font-weight:bold; background:transparent; border:none;")
 
         #Chart, background matched exactly to the card it sits in
-        self.plot_widget = pg.PlotWidget()
+        self.plot_widget = pg.PlotWidget(
+            axisItems={'bottom': SecondsAxisItem(orientation='bottom')}
+        )
         self.plot_widget.setBackground(CARD_BACKGROUND)
         self.plot_widget.showGrid(x=True, y=True, alpha=0.15)
 
@@ -165,7 +167,7 @@ class liveDataPage(QWidget):
         card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setContentsMargins(PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN, PAGE_MARGIN)
         main_layout.setSpacing(16)
         main_layout.addWidget(title)
         main_layout.addLayout(controls_layout)

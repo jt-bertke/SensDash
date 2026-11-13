@@ -6,7 +6,7 @@
 # learning PySide6.
 
 #P.S. most of these classes do not handle any logic other than their actual designs.
-# They are setup to avoid having any data touch the backend.
+# They are setup to avoid having any data touch the frontend.
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -39,6 +39,7 @@ from collections import deque
 import qtawesome as qta
 import pyqtgraph as pg
 import math
+from pages.utilities.theme import CARD_TITLE_STYLE
 
 pg.setConfigOption('background', '#14191f')
 pg.setConfigOption('foreground', '#6B7280')
@@ -66,36 +67,35 @@ class ArcGauge(QWidget):
 
     #Bulk of the card design lies here.
     def paintEvent(self, event):
-        #I opted using the painter tool since it makes drawing
-        #circles or other rounded shapes trivial. It also functions very well
-        #with ever changing values.
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        #Defining dimensions of our shape
-        side = min(self.width(), self.height()) - 20
+        #Bottom strip of the widget is reserved for the caption
+        caption_h = 22
+        dial_h = self.height() - caption_h
+
+        side = min(self.width(), dial_h) - 20
         x_offset = (self.width() - side) / 2
-        y_offset = (self.height() - side) / 2
+        y_offset = (dial_h - side) / 2
 
         rect = QRectF(x_offset, y_offset, side, side)
         start_angle = 225 * 16
         span_angle = -270 * 16
 
-        #Begin the painting logic. This code essentially begins tracing the original dimensions
-        #i provided in the shape of an arc. Each time a new value is updated, this function is called
-        #to repaint the arc. Hence the name arcgauge.
-        track_pen = QPen(QColor("#273341"), 8, Qt.SolidLine, Qt.RoundCap)
-        painter.setPen(track_pen)
+        painter.setPen(QPen(QColor("#273341"), 8, Qt.SolidLine, Qt.RoundCap))
         painter.drawArc(rect, start_angle, span_angle)
 
         fraction = (self.value - self.min_value) / (self.max_value - self.min_value)
-        value_pen = QPen(self.color, 8, Qt.SolidLine, Qt.RoundCap)
-        painter.setPen(value_pen)
+        painter.setPen(QPen(self.color, 8, Qt.SolidLine, Qt.RoundCap))
         painter.drawArc(rect, start_angle, int(span_angle * fraction))
 
         painter.setPen(QColor("#FFFFFF"))
         painter.setFont(QFont("Arial", 16, QFont.Bold))
-        painter.drawText(self.rect(), Qt.AlignCenter, f"{self.value:.0f}{self.unit}")
+        painter.drawText(QRectF(0, 0, self.width(), dial_h), Qt.AlignCenter, f"{self.value:.0f}{self.unit}")
+
+        painter.setPen(QColor("#6B7280"))
+        painter.setFont(QFont("Arial", 9))
+        painter.drawText(QRectF(0, dial_h, self.width(), caption_h), Qt.AlignCenter, self.label.upper())
 
         painter.end()
 
@@ -155,30 +155,15 @@ class EcuCard(QFrame):
 
         self.load_gauge = ArcGauge("Engine Load", unit="%", color="#3B82F6")
         self.throttle_gauge = ArcGauge("Throttle Position", unit="%", color="#EAB308")
-        self.load_gauge.setFixedSize(80, 80)
-        self.throttle_gauge.setFixedSize(80, 80)
-
-        load_label = QLabel("ENGINE LOAD")
-        load_label.setAlignment(Qt.AlignCenter)
-        load_label.setStyleSheet("color:#6B7280; font-size:9px; border:none; background:transparent;")
-
-        throttle_label = QLabel("THROTTLE POSITION")
-        throttle_label.setAlignment(Qt.AlignCenter)
-        throttle_label.setStyleSheet("color:#6B7280; font-size:9px; border:none; background:transparent;")
-
-        load_col = QVBoxLayout()
-        load_col.setSpacing(4)
-        load_col.addWidget(self.load_gauge, alignment=Qt.AlignCenter)
-        load_col.addWidget(load_label)
-
-        throttle_col = QVBoxLayout()
-        throttle_col.setSpacing(4)
-        throttle_col.addWidget(self.throttle_gauge, alignment=Qt.AlignCenter)
-        throttle_col.addWidget(throttle_label)
+        self.load_gauge.setFixedSize(150, 140)
+        self.throttle_gauge.setFixedSize(150, 140)
 
         gauges_layout = QHBoxLayout()
-        gauges_layout.addLayout(load_col)
-        gauges_layout.addLayout(throttle_col)
+        gauges_layout.addStretch()
+        gauges_layout.addWidget(self.load_gauge)
+        gauges_layout.addStretch()
+        gauges_layout.addWidget(self.throttle_gauge)
+        gauges_layout.addStretch()
 
         gauges_widget = QWidget()
         gauges_widget.setStyleSheet("background:transparent;")
@@ -186,7 +171,7 @@ class EcuCard(QFrame):
         gauges_widget.setFixedHeight(110)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(14, 14, 14, 14)
         main_layout.setSpacing(8)
         main_layout.addWidget(title)
         main_layout.addWidget(faults_scroll, 1)
@@ -271,7 +256,7 @@ class TirePressureCard(QFrame):
         self.diagram = TireDiagram(target_psi=target_psi)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(14, 14, 14, 14)
         main_layout.setSpacing(10)
         main_layout.addWidget(title)
         main_layout.addWidget(self.diagram, 1)
@@ -292,6 +277,17 @@ class TireDiagram(QWidget):
         self.tire_psi[position] = psi
         self.update()
 
+    #Gray = no reading, green = on target, yellow = 10% off, red = 20% off
+    def _pressure_color(self, psi):
+        if psi is None:
+            return QColor("#6B7280")
+        deviation = abs(psi - self.target_psi) / self.target_psi
+        if deviation >= 0.20:
+            return QColor("#EF4444")
+        if deviation >= 0.10:
+            return QColor("#EAB308")
+        return QColor("#3CCF4E")
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -299,9 +295,9 @@ class TireDiagram(QWidget):
         w, h = self.width(), self.height()
         cx, cy = w / 2, h / 2
 
-        body_color = QColor("#3B4657")      
-        accent_color = QColor("#3B82F6")    
-        wheel_color = QColor("#1F2937")     
+        body_color = QColor("#3B4657")
+        accent_color = QColor("#3B82F6")
+        wheel_color = QColor("#1F2937")
         wheel_outline = QColor("#3B4657")
 
         body_w = w * 0.22
@@ -315,8 +311,7 @@ class TireDiagram(QWidget):
         front_y = cy - body_h * 0.30
         rear_y = cy + body_h * 0.30
 
-        shaft_pen = QPen(accent_color, 3, Qt.SolidLine, Qt.RoundCap)
-        painter.setPen(shaft_pen)
+        painter.setPen(QPen(accent_color, 3, Qt.SolidLine, Qt.RoundCap))
         painter.drawLine(QPointF(cx, front_y), QPointF(cx, rear_y))
 
         diff_radius = 6
@@ -325,51 +320,48 @@ class TireDiagram(QWidget):
         painter.drawEllipse(QPointF(cx, front_y), diff_radius, diff_radius)
         painter.drawEllipse(QPointF(cx, rear_y), diff_radius, diff_radius)
 
-        glow_pen = QPen(accent_color.lighter(160), 1)
-        painter.setPen(glow_pen)
+        painter.setPen(QPen(accent_color.lighter(160), 1))
         painter.setBrush(Qt.NoBrush)
         painter.drawEllipse(QPointF(cx, front_y), diff_radius + 3, diff_radius + 3)
         painter.drawEllipse(QPointF(cx, rear_y), diff_radius + 3, diff_radius + 3)
 
-        axle_pen = QPen(body_color, 2)
-        painter.setPen(axle_pen)
+        painter.setPen(QPen(body_color, 2))
         for axle_y in (front_y, rear_y):
             painter.drawLine(QPointF(cx - axle_half_width, axle_y), QPointF(cx - diff_radius - 3, axle_y))
             painter.drawLine(QPointF(cx + diff_radius + 3, axle_y), QPointF(cx + axle_half_width, axle_y))
 
-        wheel_w, wheel_h = 14, 26
-        wheel_rects = {
-            "fl": QRectF(cx - axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
-            "fr": QRectF(cx + axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
-            "rl": QRectF(cx - axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
-            "rr": QRectF(cx + axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
-        }
+        wheel_w = max(14, w * 0.045)
+        wheel_h = max(26, body_h * 0.17)
+        wheel_rects = [
+            QRectF(cx - axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
+            QRectF(cx + axle_half_width - wheel_w / 2, front_y - wheel_h / 2, wheel_w, wheel_h),
+            QRectF(cx - axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
+            QRectF(cx + axle_half_width - wheel_w / 2, rear_y - wheel_h / 2, wheel_w, wheel_h),
+        ]
         painter.setPen(QPen(wheel_outline, 1.5))
         painter.setBrush(wheel_color)
-        for rect in wheel_rects.values():
+        for rect in wheel_rects:
             painter.drawRoundedRect(rect, 4, 4)
 
-        painter.setFont(QFont("Arial", 15, QFont.Bold))
-        painter.setPen(QColor("#D1D5DB"))
+        #Pressure labels: left tires right-align against the left wheels,
+        # right tires left-align against the right wheels
+        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        label_w, label_h = w * 0.28, 28
+        gap = wheel_w / 2 + 14
+        left_edge = cx - axle_half_width - gap
+        right_edge = cx + axle_half_width + gap
 
-        label_w, label_h = w * 0.23, 24
-        positions = {
-            "fl": QRectF(0, front_y - label_h / 2, label_w, label_h),
-            "fr": QRectF(w - label_w, front_y - label_h / 2, label_w, label_h),
-            "rl": QRectF(0, rear_y - label_h / 2, label_w, label_h),
-            "rr": QRectF(w - label_w, rear_y - label_h / 2, label_w, label_h),
-        }
-        alignments = {
-            "fl": Qt.AlignRight | Qt.AlignVCenter,
-            "fr": Qt.AlignLeft | Qt.AlignVCenter,
-            "rl": Qt.AlignRight | Qt.AlignVCenter,
-            "rr": Qt.AlignLeft | Qt.AlignVCenter,
-        }
-
-        for pos, rect in positions.items():
+        labels = [
+            ("fl", QRectF(left_edge - label_w, front_y - label_h / 2, label_w, label_h), Qt.AlignRight | Qt.AlignVCenter),
+            ("fr", QRectF(right_edge, front_y - label_h / 2, label_w, label_h), Qt.AlignLeft | Qt.AlignVCenter),
+            ("rl", QRectF(left_edge - label_w, rear_y - label_h / 2, label_w, label_h), Qt.AlignRight | Qt.AlignVCenter),
+            ("rr", QRectF(right_edge, rear_y - label_h / 2, label_w, label_h), Qt.AlignLeft | Qt.AlignVCenter),
+        ]
+        for pos, rect, align in labels:
             psi = self.tire_psi[pos]
+            painter.setPen(self._pressure_color(psi))
             text = f"{psi:.0f} psi" if psi is not None else "-- psi"
-            painter.drawText(rect, alignments[pos], text)
+            painter.drawText(rect, align, text)
 
         painter.end()
 
@@ -387,7 +379,7 @@ class SensorTrends(QFrame):
         "rpm": {"label": "Motor Speed (RPM)", "color": "#3B82F6", "axis": "left"},
         "current": {"label": "Motor Current (A)", "color": "#22C55E", "axis": "right"},
         "voltage": {"label": "Battery Voltage (V)", "color": "#EAB308", "axis": "right"},
-        "temp": {"label": "Motor Temp (\u00b0F)", "color": "#A855F7", "axis": "right"}
+        "temp": {"label": "Coolant Temp (\u00b0F)", "color": "#A855F7", "axis": "right"}
     }
     
     def __init__(self, window_seconds=60, max_points=600):
@@ -436,7 +428,9 @@ class SensorTrends(QFrame):
         for axis_name in ('left', 'bottom', 'right'):
             axis = self.plot_widget.getAxis(axis_name)
             axis.setTickFont(tick_font)
+            axis.setPen(pg.mkPen('#273341'))
 
+        self.plot_widget.getAxis('bottom').setTextPen(pg.mkPen('#6B7280'))
         self.plot_widget.getAxis('left').setTextPen(pg.mkPen(self.SERIES["rpm"]["color"]))
         self.plot_widget.getAxis('right').setTextPen(pg.mkPen(self.SERIES["temp"]["color"]))
         
@@ -531,6 +525,8 @@ class SensorTrends(QFrame):
 #This class handles the updates in the system log card. It describes how the program
 # as a whole is functioning. Mainly cosmetic but it does handle dummy data as well.
 class SystemLog(QFrame):
+
+    MAX_ENTRIES = 100
     
     LEVEL_COLORS = {
         "info": "#3b82F6",
@@ -602,7 +598,7 @@ class SystemLog(QFrame):
         scroll.setFrameShape(QFrame.NoFrame)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(14, 14, 14, 14)
         main_layout.setSpacing(10)
         main_layout.addWidget(title)
         main_layout.addWidget(scroll)
@@ -673,6 +669,11 @@ class SystemLog(QFrame):
 
         self.entries_layout.insertWidget(0, row)
 
+        while self.entries_layout.count() - 1 > self.MAX_ENTRIES:
+            old = self.entries_layout.takeAt(self.entries_layout.count() - 2)
+            if old.widget():
+                old.widget().deleteLater()
+
 #This is the only card left from when I first designed this program. It's the bottom
 # wrapper you see in the program. It handles the design and cosmetics of the wrapper.
 # It also provides functionality to the data stream.
@@ -695,44 +696,44 @@ class BottomLog(QFrame):
     def create_monitor_card(self, name, value, unit, label, icon):
         monitor_card = QFrame()
         monitor_card.setObjectName("MonitorFrame")
-        monitor_card.setStyleSheet("""
-        #MonitorFrame{
-            background-color:#11161D;
-            border-right: 1px solid #273341; 
-        }                   
-        """)
+        monitor_card.setStyleSheet("#MonitorFrame{ background:transparent; border:none; }")
 
-        top_text_layout = QHBoxLayout()
         value_label = QLabel(value)
+        value_label.setStyleSheet(
+            "font-size:18px; color:#FFFFFF; font-weight:bold; border:none; background:transparent;"
+        )
         unit_label = QLabel(unit or "")
-        top_text_layout.addWidget(value_label, 1)
-        top_text_layout.addWidget(unit_label, 6)
-        top_text_layout.setSpacing(3)
-        top_text_layout.setContentsMargins(0, 0, 0, 0)
+        unit_label.setStyleSheet(
+            "font-size:11px; color:#6B7280; border:none; background:transparent;"
+        )
+        unit_label.setContentsMargins(0, 0, 0, 4)
 
-        value_label.setStyleSheet("font-size:14px; color:#6B7280; font-weight:bold;")
-        unit_label.setStyleSheet("font-size:10px; color:#6B7280; font-weight:none;")
-
-        top_text_widget = QWidget()
-        top_text_widget.setLayout(top_text_layout)
-
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(0)
-        text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.addWidget(top_text_widget)
+        top_row = QHBoxLayout()
+        top_row.setSpacing(4)
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.addWidget(value_label)
+        top_row.addWidget(unit_label, 0, Qt.AlignBottom)
+        top_row.addStretch()
 
         label_widget = QLabel(label)
-        label_widget.setStyleSheet("font-size:10px; color:#6B7280; font-weight:none;")
+        label_widget.setStyleSheet(
+            "font-size:10px; color:#6B7280; border:none; background:transparent;"
+        )
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(1)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.addLayout(top_row)
         text_layout.addWidget(label_widget)
 
-        text_container = QWidget()
-        text_container.setLayout(text_layout)
+        icon.setStyleSheet("border:none; background:transparent;")
 
         card_layout = QHBoxLayout()
-        card_layout.setContentsMargins(0, 0, 0, 0)
-        card_layout.setSpacing(6)
-        card_layout.addWidget(icon, 1)
-        card_layout.addWidget(text_container, 6)
+        card_layout.setContentsMargins(16, 0, 0, 0)
+        card_layout.setSpacing(12)
+        card_layout.addWidget(icon)
+        card_layout.addLayout(text_layout)
+        card_layout.addStretch()
         monitor_card.setLayout(card_layout)
 
         self.value_labels[name] = value_label
@@ -754,6 +755,7 @@ class BottomLog(QFrame):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         bottom_log_layout = QHBoxLayout()
+        bottom_log_layout.setContentsMargins(8, 6, 8, 6)
 
         battery_voltage_icon = self.create_icon("fa6s.battery-half")
         ambient_temp_icon = self.create_icon("fa5s.thermometer-half")
@@ -762,12 +764,11 @@ class BottomLog(QFrame):
         drive_state_icon = self.create_icon("mdi.alpha-p-box-outline")
 
         battery_voltage = self.create_monitor_card("battery_voltage", "12.6", "V", "Battery Voltage", battery_voltage_icon)
-        ambient_temp = self.create_monitor_card("ambient_temp", "25.3", "°C", "Ambient Temperature", ambient_temp_icon)
+        ambient_temp = self.create_monitor_card("ambient_temp", "77", "°F", "Ambient Temperature", ambient_temp_icon)
         vehicle_speed = self.create_monitor_card("vehicle_speed", "0.0", "MPH", "Vehicle Speed", vehicle_speed_icon)
         motor_torque = self.create_monitor_card("motor_torque", "0.0", "ft-lbs", "Motor Torque", motor_torque_icon)
         drive_state = self.create_monitor_card("drive_state", "Park", None, "Drive State", drive_state_icon)
 
-        bottom_log_layout.addWidget(self.create_separator(), 1)
         bottom_log_layout.addWidget(battery_voltage, 1)
         bottom_log_layout.addWidget(self.create_separator(), 1)
         bottom_log_layout.addWidget(ambient_temp, 1)
@@ -842,71 +843,55 @@ class StatusCard(QFrame):
             font-weight:bold;
         """)
 
-# Also an obsolete card. I just can't bring myself to remove it.
-# This card is a reminder of where I came from.
 class sensorCard(QFrame):
 
     def __init__(self, title, value, units):
         super().__init__()
 
-        frame = QFrame()
-        frame.setObjectName("SensorCard")
-        frame.setStyleSheet("""
+        self.setObjectName("SensorCard")
+        self.setStyleSheet("""
             #SensorCard {
                 background-color: #14191f;
                 border: 1px solid #273341;
-                border-radius: 12px;
+                border-radius: 10px;
             }
-            QLabel {
-                background-color:#14191f;
-            }             
+            QLabel { background-color: transparent; border: none; }
         """)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        
+        self.title_label = QLabel(title.upper())
+        self.title_label.setStyleSheet(CARD_TITLE_STYLE)
 
-        self.title_label = QLabel(title)
-        self.title_label.setStyleSheet("""
-            color: #A6B2C2;
-            font-size:14px;                           
-        """)
-        
         self.value_label = QLabel(str(value))
         self.value_label.setStyleSheet("""
             color:white;
-            font-size:38px;
-            font-weight:bold;                      
+            font-size:34px;
+            font-weight:bold;
         """)
-        
+
         self.units_label = QLabel(units)
         self.units_label.setStyleSheet("""
             color:#3B82F6;
-            font-size:14px;
-            font-weight:bold;                               
+            font-size:13px;
+            font-weight:bold;
         """)
+        self.units_label.setContentsMargins(0, 0, 0, 6)
 
-        self.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Expanding
-        )
+        value_row = QHBoxLayout()
+        value_row.setSpacing(6)
+        value_row.addWidget(self.value_label)
+        value_row.addWidget(self.units_label, 0, Qt.AlignBottom)
+        value_row.addStretch()
 
-        frame_layout = QVBoxLayout()
-        frame_layout.setContentsMargins(12,12,12,12)
-        frame_layout.setSpacing(6)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+        layout.addWidget(self.title_label)
+        layout.addStretch()
+        layout.addLayout(value_row)
+        layout.addStretch()
+        self.setLayout(layout)
 
-        frame_layout.addWidget(self.title_label)
-        frame_layout.addWidget(self.value_label)
-        frame_layout.addWidget(self.units_label)
-
-        frame.setLayout(frame_layout)
-
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0,0,0,0)
-        main_layout.setSpacing(0)
-
-        main_layout.addWidget(frame)
-
-        self.setLayout(main_layout)
-    
     def update_value(self, value):
         self.value_label.setText(str(value))
 
@@ -926,7 +911,7 @@ class TopBanner(QFrame):
         self.connection.setPixmap(icon.pixmap(20,20))
     
     def _update_wifi_manual(self, connected):
-        color = "#3CCF4E" if connected else "#4B5563"
+        color = "#FFFFFF" if connected else "#4B5563"
         icon = qta.icon("ph.wifi-high-light" if connected else "ph.wifi-slash-light")
         self.network.setPixmap(icon.pixmap(20,20))
  
@@ -976,6 +961,7 @@ class TopBanner(QFrame):
 
         self._update_status(self.conn_mgr.overall_connected)
         self._update_usb(self.conn_mgr._usb_connected)
+        self._update_wifi_manual(self.conn_mgr._wifi_connected)
 
         #adding widgets to banner layout
         layout.addWidget(self.logo)
@@ -1033,6 +1019,7 @@ class SideBanner(QFrame):
         QPushButton {
             background: transparent;
             border: none;
+            border-left: 2px solid transparent;
             border-radius: 8px;
             color: #FFFFFF;
             text-align: left;
@@ -1051,7 +1038,7 @@ class SideBanner(QFrame):
             background-color: rgba(1,47,99,0.5);
             color: white;
             border-left: 2px solid #3B82F6;
-            border-radius: 5px;
+            border-radius: 8px;
             color: #FFFFFF;
             text-align: left;
             padding-left: 8px;
@@ -1209,14 +1196,14 @@ class DualStatCard(QFrame):
         #DualStatFrame {
             background-color: #14191f;
             border: 1px solid #273341;
-            border-radius: 12px;
+            border-radius: 10px;
         }
         QLabel { background-color: transparent; }
         """)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #A6B2C2; font-size: 13px; font-weight: bold; border:none;")
+        title_label.setStyleSheet("color: #A6B2C2; font-size: 12px; font-weight: bold; border:none;")
 
         self.value1_label = QLabel(str(value1))
         self.value2_label = QLabel(str(value2))
@@ -1282,13 +1269,13 @@ class CompassCard(QFrame):
         #CompassFrame {
             background-color: #14191f;
             border: 1px solid #273341;
-            border-radius: 12px;
+            border-radius: 10px;
         }
         """)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         title = QLabel("COMPASS")
-        title.setStyleSheet("color:#A6B2C2; font-size:13px; font-weight:bold; border:none; background:transparent;")
+        title.setStyleSheet("color:#A6B2C2; font-size:12px; font-weight:bold; border:none; background:transparent;")
 
         self.compass_widget = CompassDial()
 
@@ -1374,7 +1361,7 @@ class PlaceholderCard(QFrame):
         #PlaceholderFrame {
             background-color: #14191f;
             border: 1px dashed #273341;
-            border-radius: 12px;
+            border-radius: 10px;
         }
         """)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
